@@ -1,4 +1,3 @@
-# Based on prepared content
 FROM ubuntu:22.04
 
 LABEL maintainer="hhCodingCat"
