@@ -45,7 +45,7 @@ on:
         default: true
       repo_url:
         description: '源代码仓库URL'
-        default: 'https://github.com/padavanonly/immortalwrt-mt798x-24.10'
+        default: 'https://github.com/padavanonly/immortalwrt-mt798x-6.6'
       repo_branch:
         description: '源代码仓库分支'
         default: 'openwrt-24.10-6.6'
@@ -57,7 +57,7 @@ permissions:
   actions: write
 
 env:
-  REPO_URL: ${{ github.event.inputs.repo_url || 'https://github.com/padavanonly/immortalwrt-mt798x-24.10' }}
+  REPO_URL: ${{ github.event.inputs.repo_url || 'https://github.com/padavanonly/immortalwrt-mt798x-6.6' }}
   REPO_BRANCH: ${{ github.event.inputs.repo_branch || 'openwrt-24.10-6.6' }}
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: 24.10-6.6.config
@@ -93,7 +93,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends gh
-          LATEST_SHA=$(gh api repos/padavanonly/immortalwrt-mt798x-24.10/commits/$REPO_BRANCH --jq '.sha' || echo "")
+          LATEST_SHA=$(gh api repos/padavanonly/immortalwrt-mt798x-6.6/commits/$REPO_BRANCH --jq '.sha' || echo "")
           if [ -z "$LATEST_SHA" ]; then
             echo "错误：无法获取 $REPO_URL 的最新SHA"
             echo "should_build=false" >> $GITHUB_OUTPUT
