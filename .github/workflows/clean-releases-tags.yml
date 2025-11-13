@@ -21,8 +21,12 @@ jobs:
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
-      - name: 安装 jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: 安装 GitHub CLI (gh) 和 jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+          gh --version
+          jq --version
       - name: 验证保留数量
         id: validate
         run: |
@@ -47,7 +51,7 @@ jobs:
           RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -97,7 +101,7 @@ jobs:
           TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
@@ -113,8 +117,8 @@ jobs:
           echo "$TAGS"
          
           # 获取保留的 Releases 对应的实际 Tag 名称
-          RETAINED_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?per_page=$RETAIN_COUNT --jq '.[] | select(.name | test("ImmortalWrt-24.10")) | .tag_name' | tr '\n' ' ')
-          RETAINED_TAGS=$(echo "$RETAINED_RELEASES" | tr ' ' '\n' | grep -v '^$' | uniq)
+          RETAINED_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?per_page=$RETAIN_COUNT | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .tag_name')
+          RETAINED_TAGS=$(echo "$RETAINED_RELEASES" | tr '\n' ' ' | grep -v '^$' | uniq)
           echo "保留的 Releases 对应的 Tags："
           echo "$RETAINED_TAGS"
          
@@ -155,7 +159,7 @@ jobs:
           REMAINING_RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -178,7 +182,7 @@ jobs:
           REMAINING_TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
@@ -210,7 +214,7 @@ jobs:
           RETAINED_RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -226,7 +230,7 @@ jobs:
           RETAINED_TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 --jq '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
