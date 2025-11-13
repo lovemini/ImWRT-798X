@@ -51,7 +51,12 @@ jobs:
           RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_RELEASES_OUTPUT" == *"422"* ]] || [[ "$PAGE_RELEASES_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法获取更多 Releases。已处理前 $((PAGE * 100)) 条。"
+              break
+            fi
+            PAGE_RELEASES=$(echo "$PAGE_RELEASES_OUTPUT" | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -101,7 +106,12 @@ jobs:
           TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_TAGS_OUTPUT" == *"422"* ]] || [[ "$PAGE_TAGS_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法获取更多 Tags。已处理前 $((PAGE * 100)) 条。"
+              break
+            fi
+            PAGE_TAGS=$(echo "$PAGE_TAGS_OUTPUT" | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
@@ -159,7 +169,12 @@ jobs:
           REMAINING_RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_RELEASES_OUTPUT" == *"422"* ]] || [[ "$PAGE_RELEASES_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法验证更多 Releases。"
+              break
+            fi
+            PAGE_RELEASES=$(echo "$PAGE_RELEASES_OUTPUT" | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -182,7 +197,12 @@ jobs:
           REMAINING_TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_TAGS_OUTPUT" == *"422"* ]] || [[ "$PAGE_TAGS_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法验证更多 Tags。"
+              break
+            fi
+            PAGE_TAGS=$(echo "$PAGE_TAGS_OUTPUT" | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
@@ -214,7 +234,12 @@ jobs:
           RETAINED_RELEASES=""
           PAGE=1
           while true; do
-            PAGE_RELEASES=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
+            PAGE_RELEASES_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_RELEASES_OUTPUT" == *"422"* ]] || [[ "$PAGE_RELEASES_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法获取更多保留 Releases。"
+              break
+            fi
+            PAGE_RELEASES=$(echo "$PAGE_RELEASES_OUTPUT" | jq -r '.[] | select(.name | test("ImmortalWrt-24.10")) | .name')
             if [ -z "$PAGE_RELEASES" ]; then
               break
             fi
@@ -230,7 +255,12 @@ jobs:
           RETAINED_TAGS=""
           PAGE=1
           while true; do
-            PAGE_TAGS=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
+            PAGE_TAGS_OUTPUT=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/tags?page=$PAGE&per_page=100 2>&1)
+            if [[ "$PAGE_TAGS_OUTPUT" == *"422"* ]] || [[ "$PAGE_TAGS_OUTPUT" == *"10000"* ]]; then
+              echo "警告：GitHub API 限额 10,000 条已达，无法获取更多保留 Tags。"
+              break
+            fi
+            PAGE_TAGS=$(echo "$PAGE_TAGS_OUTPUT" | jq -r '.[] | select(.name | test("(?i)immortalwrt-24.10")) | .name')
             if [ -z "$PAGE_TAGS" ]; then
               break
             fi
