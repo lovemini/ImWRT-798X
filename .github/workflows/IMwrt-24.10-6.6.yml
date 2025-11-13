@@ -512,6 +512,7 @@ jobs:
           - 支持USB网卡、USB随身wifi。
           -  MediaTek HNAT硬件加速
           -  Ksmbd文件共享
+          -  kmod-oaf (AppFilter)
           -  默认管理地址192.168.2.1  密码：空
 
           ## 安装说明
