@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
+      - name: 安装 jq
+        run: sudo apt-get update && sudo apt-get install -y jq
       - name: 验证保留数量
         id: validate
         run: |
