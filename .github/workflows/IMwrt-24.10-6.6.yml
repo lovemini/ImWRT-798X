@@ -157,37 +157,6 @@ jobs:
         device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m", "cmcc_rax3000m-emmc", "cudy_ap3000-v1", "cudy_ap3000outdoor-v1", "cudy_m3000-v1", "cudy_re3000-v1", "cudy_tr3000-v1", "cudy_tr3000-v1-256mb", "cudy_wr3000-v1", "cudy_wr3000s-v1", "glinet_gl-mt2500", "glinet_gl-mt3000", "glinet_gl-x3000", "glinet_gl-xe3000", "h3c_magic-nx30-pro", "huasifei_wh3000-pro", "huasifei_wh3000-emmc", "jcg_q30-pro", "livinet_zr-3020", "routerich_ax3000", "routerich_ax3000-v1", "xiaomi_mi-router-ax3000t", "xiaomi_mi-router-wr30u-stock", "xiaomi_redmi-router-ax6000-stock", "zyxel_ex5601-t0-stock", "zyxel_nwa50ax-pro"]') }}
       max-parallel: 18
     steps:
-      - name: 打印调试信息
-        run: |
-          echo "触发类型：${{ github.event_name }}"
-          echo "设备型号：${{ matrix.device_model }}"
-          echo "5G 25dB：${{ env.ENABLE_5G_25DB }}"
-          echo "源代码仓库：${{ env.REPO_URL }} 分支：${{ env.REPO_BRANCH }}"
-
-      - name: 确定设备代码和显示名称
-        id: determine_model
-        run: |
-          # 使用jq解析env中的DEVICE_MAPPING JSON，避免重复case语句
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            SELECTED="${{ matrix.device_model }}"
-            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.display == \"$SELECTED\") | @json")
-          else
-            SELECTED="${{ matrix.device_model }}"
-            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.code == \"$SELECTED\") | @json")
-          fi
-          
-          if [ -z "$MAPPING" ] || [ "$MAPPING" == "null" ]; then
-            echo "未知设备型号/代码: $SELECTED"
-            exit 1
-          fi
-          
-          DEVICE_CODE=$(echo "$MAPPING" | jq -r '.code')
-          DISPLAY_NAME=$(echo "$MAPPING" | jq -r '.display')
-          
-          echo "device_code=$DEVICE_CODE" >> $GITHUB_ENV
-          echo "display_name=$DISPLAY_NAME" >> $GITHUB_ENV
-          echo "actual_device_model=$DEVICE_CODE" >> $GITHUB_OUTPUT
-
       - name: 检出仓库
         uses: actions/checkout@v4
 
@@ -226,6 +195,37 @@ jobs:
           # 创建工作目录
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
+
+      - name: 确定设备代码和显示名称
+        id: determine_model
+        run: |
+          # 使用jq解析env中的DEVICE_MAPPING JSON，避免重复case语句
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            SELECTED="${{ matrix.device_model }}"
+            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.display == \"$SELECTED\") | @json" 2>/dev/null)
+          else
+            SELECTED="${{ matrix.device_model }}"
+            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.code == \"$SELECTED\") | @json" 2>/dev/null)
+          fi
+          
+          if [ -z "$MAPPING" ] || [ "$MAPPING" == "null" ]; then
+            echo "未知设备型号/代码: $SELECTED"
+            exit 1
+          fi
+          
+          DEVICE_CODE=$(echo "$MAPPING" | jq -r '.code')
+          DISPLAY_NAME=$(echo "$MAPPING" | jq -r '.display')
+          
+          echo "device_code=$DEVICE_CODE" >> $GITHUB_ENV
+          echo "display_name=$DISPLAY_NAME" >> $GITHUB_ENV
+          echo "actual_device_model=$DEVICE_CODE" >> $GITHUB_OUTPUT
+
+      - name: 打印调试信息
+        run: |
+          echo "触发类型：${{ github.event_name }}"
+          echo "设备型号：${{ matrix.device_model }}"
+          echo "5G 25dB：${{ env.ENABLE_5G_25DB }}"
+          echo "源代码仓库：${{ env.REPO_URL }} 分支：${{ env.REPO_BRANCH }}"
 
       - name: 缓存APT软件包
         uses: actions/cache@v4
@@ -371,6 +371,7 @@ jobs:
             openwrt/build_dir/**/*
             openwrt/logs/**/*
             openwrt/*.log
+          if-no-files-found: ignore
 
       - name: 智能提取版本号
         id: version
@@ -556,16 +557,16 @@ jobs:
           echo "$FIRMWARE_FILES" | tr ' ' '\n' | xargs -I {} -P 3 bash -c '
             FILE="{}"
             if echo "$FILE" | grep -q "README.md"; then
-              NEW_NAME="${{ env.device_code }}-README.md"
+              NEW_NAME="'"${{ env.device_code }}"-README.md'"
             else
               NEW_NAME=$(basename "$FILE")
             fi
             echo "计算 $FILE 的校验和"
             SHA256=$(sha256sum "$FILE" | cut -d" " -f1)
             echo "上传：$FILE → $NEW_NAME"
-            RESPONSE=$(curl --retry 3 --retry-delay 5 -u "${{ env.WEBDAV_USERNAME }}:${{ env.WEBDAV_PASSWORD }}" \
+            RESPONSE=$(curl --retry 3 --retry-delay 5 -u "'"${{ env.WEBDAV_USERNAME }}:${{ env.WEBDAV_PASSWORD }}"' " \
                    -T "$FILE" \
-                   "${{ env.WEBDAV_URL }}/$NEW_NAME" -w "%{http_code}" -o /dev/null -s)
+                   "'"${{ env.WEBDAV_URL }}/$NEW_NAME"'" -w "%{http_code}" -o /dev/null -s)
             if [ "$RESPONSE" -ne 201 ] && [ "$RESPONSE" -ne 204 ] && [ "$RESPONSE" -ne 200 ]; then
               echo "上传失败：$NEW_NAME (HTTP状态：$RESPONSE)"
               exit 1
