@@ -68,62 +68,36 @@ env:
   WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
   WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
   ENABLE_5G_25DB: ${{ github.event.inputs.enable_5g_25db || true }}
-
-# 设备映射：使用JSON数组简化case语句处理
-vars:
-  device_mapping:
-    - display: "中国移动 RAX3000M NAND"
-      code: "cmcc_rax3000m"
-    - display: "中国移动 RAX3000M eMMC"
-      code: "cmcc_rax3000m-emmc"
-    - display: "Cudy AP3000 AX3000"
-      code: "cudy_ap3000-v1"
-    - display: "Cudy AP3000 户外版"
-      code: "cudy_ap3000outdoor-v1"
-    - display: "Cudy M3000 AX3000"
-      code: "cudy_m3000-v1"
-    - display: "Cudy RE3000 AX3000 中继器"
-      code: "cudy_re3000-v1"
-    - display: "Cudy TR3000 AX3000"
-      code: "cudy_tr3000-v1"
-    - display: "Cudy TR3000 AX3000 256MB"
-      code: "cudy_tr3000-v1-256mb"
-    - display: "Cudy WR3000 AX3000"
-      code: "cudy_wr3000-v1"
-    - display: "Cudy WR3000S AX3000 增强版"
-      code: "cudy_wr3000s-v1"
-    - display: "GL.iNet Mango AX MT2500"
-      code: "glinet_gl-mt2500"
-    - display: "GL.iNet Beryl AX MT3000"
-      code: "glinet_gl-mt3000"
-    - display: "GL.iNet X3000 LTE"
-      code: "glinet_gl-x3000"
-    - display: "GL.iNet XE3000 工业级 LTE"
-      code: "glinet_gl-xe3000"
-    - display: "H3C NX30 Pro 魔术路由器"
-      code: "h3c_magic-nx30-pro"
-    - display: "华思飞 WH3000 Pro"
-      code: "huasifei_wh3000-pro"
-    - display: "华思飞 WH3000 eMMC"
-      code: "huasifei_wh3000-emmc"
-    - display: "JCG Q30 Pro AX3000"
-      code: "jcg_q30-pro"
-    - display: "Livinet ZR3020 AX3000"
-      code: "livinet_zr-3020"
-    - display: "Routerich AX3000"
-      code: "routerich_ax3000"
-    - display: "Routerich AX3000 V1"
-      code: "routerich_ax3000-v1"
-    - display: "小米 AX3000T"
-      code: "xiaomi_mi-router-ax3000t"
-    - display: "小米 WR30U 原厂"
-      code: "xiaomi_mi-router-wr30u-stock"
-    - display: "红米 AX6000 原厂"
-      code: "xiaomi_redmi-router-ax6000-stock"
-    - display: "合勤 EX5601-T0 原厂"
-      code: "zyxel_ex5601-t0-stock"
-    - display: "合勤 NWA50AX Pro AP"
-      code: "zyxel_nwa50ax-pro"
+  # 设备映射：使用多行字符串定义JSON，避免top-level vars
+  DEVICE_MAPPING: |
+    [
+      {"display": "中国移动 RAX3000M NAND", "code": "cmcc_rax3000m"},
+      {"display": "中国移动 RAX3000M eMMC", "code": "cmcc_rax3000m-emmc"},
+      {"display": "Cudy AP3000 AX3000", "code": "cudy_ap3000-v1"},
+      {"display": "Cudy AP3000 户外版", "code": "cudy_ap3000outdoor-v1"},
+      {"display": "Cudy M3000 AX3000", "code": "cudy_m3000-v1"},
+      {"display": "Cudy RE3000 AX3000 中继器", "code": "cudy_re3000-v1"},
+      {"display": "Cudy TR3000 AX3000", "code": "cudy_tr3000-v1"},
+      {"display": "Cudy TR3000 AX3000 256MB", "code": "cudy_tr3000-v1-256mb"},
+      {"display": "Cudy WR3000 AX3000", "code": "cudy_wr3000-v1"},
+      {"display": "Cudy WR3000S AX3000 增强版", "code": "cudy_wr3000s-v1"},
+      {"display": "GL.iNet Mango AX MT2500", "code": "glinet_gl-mt2500"},
+      {"display": "GL.iNet Beryl AX MT3000", "code": "glinet_gl-mt3000"},
+      {"display": "GL.iNet X3000 LTE", "code": "glinet_gl-x3000"},
+      {"display": "GL.iNet XE3000 工业级 LTE", "code": "glinet_gl-xe3000"},
+      {"display": "H3C NX30 Pro 魔术路由器", "code": "h3c_magic-nx30-pro"},
+      {"display": "华思飞 WH3000 Pro", "code": "huasifei_wh3000-pro"},
+      {"display": "华思飞 WH3000 eMMC", "code": "huasifei_wh3000-emmc"},
+      {"display": "JCG Q30 Pro AX3000", "code": "jcg_q30-pro"},
+      {"display": "Livinet ZR3020 AX3000", "code": "livinet_zr-3020"},
+      {"display": "Routerich AX3000", "code": "routerich_ax3000"},
+      {"display": "Routerich AX3000 V1", "code": "routerich_ax3000-v1"},
+      {"display": "小米 AX3000T", "code": "xiaomi_mi-router-ax3000t"},
+      {"display": "小米 WR30U 原厂", "code": "xiaomi_mi-router-wr30u-stock"},
+      {"display": "红米 AX6000 原厂", "code": "xiaomi_redmi-router-ax6000-stock"},
+      {"display": "合勤 EX5601-T0 原厂", "code": "zyxel_ex5601-t0-stock"},
+      {"display": "合勤 NWA50AX Pro AP", "code": "zyxel_nwa50ax-pro"}
+    ]
 
 jobs:
   check-source-updates:
@@ -192,16 +166,14 @@ jobs:
 
       - name: 确定设备代码和显示名称
         id: determine_model
-        env:
-          DEVICE_MAPPING: ${{ toJson(vars.device_mapping) }}
         run: |
-          # 使用jq解析JSON映射，避免重复case语句
+          # 使用jq解析env中的DEVICE_MAPPING JSON，避免重复case语句
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             SELECTED="${{ matrix.device_model }}"
-            MAPPING=$(echo "$DEVICE_MAPPING" | jq -r ".[] | select(.display == \"$SELECTED\")")
+            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.display == \"$SELECTED\") | @json")
           else
             SELECTED="${{ matrix.device_model }}"
-            MAPPING=$(echo "$DEVICE_MAPPING" | jq -r ".[] | select(.code == \"$SELECTED\")")
+            MAPPING=$(echo "${{ env.DEVICE_MAPPING }}" | jq -r ".[] | select(.code == \"$SELECTED\") | @json")
           fi
           
           if [ -z "$MAPPING" ] || [ "$MAPPING" == "null" ]; then
