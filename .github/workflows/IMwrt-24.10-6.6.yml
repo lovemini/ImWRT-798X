@@ -168,10 +168,10 @@ jobs:
 
       - name: 准备Feeds和配置
         run: |
-          [ -e $FEEDS_CONF ] && mv $FEEDS_CONF /workdir/openwrt/feeds.conf.default
-          [ -e files ] && mv files /workdir/openwrt/files
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE /workdir/openwrt/.config
-          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ env.device_code }}=y" >> /workdir/openwrt/.config
+          [ -e $FEEDS_CONF ] && mv $FEEDS_CONF ./openwrt/feeds.conf.default
+          [ -e files ] && mv files ./openwrt/files
+          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE ./openwrt/.config
+          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ env.device_code }}=y" >> ./openwrt/.config
           cd openwrt
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH $GITHUB_WORKSPACE/$DIY_P2_SH
           $GITHUB_WORKSPACE/$DIY_P1_SH
