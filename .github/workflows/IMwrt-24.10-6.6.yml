@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m", "cmcc_rax3000m-emmc", "cudy_ap3000-v1", "cudy_ap3000outdoor-v1", "cudy_m3000-v1", "cudy_re3000-v1", "cudy_tr3000-v1", "cudy_tr3000-v1-256mb", "cudy_wr3000-v1", "cudy_wr3000s-v1", "glinet_gl-mt2500", "glinet_gl-mt3000", "glinet_gl-x3000", "glinet_gl-xe3000", "h3c_magic-nx30-pro", "huasifei_wh3000-pro", "huasifei_wh3000-emmc", "jcg_q30-pro", "livinet_zr-3020", "routerich_ax3000", "routerich_ax3000-v1", "xiaomi_mi-router-ax3000t", "xiaomi_mi-router-wr30u-stock", "xiaomi_redmi-router-ax6000-stock", "zyxel_ex5601-t0-stock", "zyxel_nwa50ax-pro"]') }}
+        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m", "cmcc_rax3000m-emmc"]') }}
       max-parallel: 18
     steps:
       - name: 打印调试信息
@@ -168,14 +168,16 @@ jobs:
 
       - name: 准备Feeds和配置
         run: |
+          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH $GITHUB_WORKSPACE/$DIY_P2_SH
           [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+          cd openwrt
+          $GITHUB_WORKSPACE/$DIY_P1_SH
+          ./scripts/feeds update -a && ./scripts/feeds install -a
+          cd ..
           [ -e files ] && mv files openwrt/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
           echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ env.device_code }}=y" >> openwrt/.config
           cd openwrt
-          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH $GITHUB_WORKSPACE/$DIY_P2_SH
-          $GITHUB_WORKSPACE/$DIY_P1_SH
-          ./scripts/feeds update -a && ./scripts/feeds install -a
           $GITHUB_WORKSPACE/$DIY_P2_SH
           make defconfig
           make download -j8
