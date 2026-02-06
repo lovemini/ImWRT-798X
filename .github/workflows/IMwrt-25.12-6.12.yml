@@ -1,4 +1,4 @@
-name: ImmortalWrt-24.10-6.6固件构建
+name: ImmortalWrt-25.12-6.12固件构建
 
 on:
   repository_dispatch:
