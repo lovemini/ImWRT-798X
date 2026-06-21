@@ -92,32 +92,15 @@ jobs:
           ./scripts/feeds update -a && ./scripts/feeds install -a
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
-      - name: 强制注入高功率 EEPROM 
-        if: github.event.inputs.enable_5g_25db == 'true'
+      - name: 修改5G 25dB
+        if: env.ENABLE_5G_25DB == 'true'
+        working-directory: ./openwrt
         run: |
-          # 1. 定义源文件位置（你仓库里的文件）
-          SOURCE_EEPROM="$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin"
-          TARGET_NAME="MT7981_iPAiLNA_EEPROM.bin"
-
-          if [ ! -f "$SOURCE_EEPROM" ]; then
-            echo "❌ 错误：未在 files/ 目录下找到 $TARGET_NAME"
-            exit 1
-          fi
-
-          # 2. 强制修正文件标识位 (0x04 偏移)，确保避开 00:0c
-          # 这是为了让固件启动时的 caldata_validate 直接通过，不触发重新提取
-          printf '\x34\xca' | dd of="$SOURCE_EEPROM" bs=1 seek=4 conv=notrunc
-
-          # 3. 寻找源码中所有同名文件并强制替换
-          cd openwrt
-          find . -name "$TARGET_NAME" -exec cp -f "$SOURCE_EEPROM" {} \;
-
-          # 4. 兜底策略：如果源码中原本没有这个文件，手动放入驱动目录
-          # 这样编译时它会被打包进固件的 /lib/firmware/
-          mkdir -p package/mtk/drivers/mt7981-firmware/files/
-          cp -f "$SOURCE_EEPROM" package/mtk/drivers/mt7981-firmware/files/$TARGET_NAME
-
-          echo "✅ 高功率 EEPROM 已强制覆盖到源码"
+          EEPROM_FILE=package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
+          EXPECTED_CONTENT=$(printf '\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B')
+          mkdir -p "$(dirname "$EEPROM_FILE")" && touch "$EEPROM_FILE" && chmod 644 "$EEPROM_FILE"
+          CURRENT_CONTENT=$(dd if="$EEPROM_FILE" bs=1 skip=$((0x445)) count=20 2>/dev/null || echo "")
+          [ "$CURRENT_CONTENT" != "$EXPECTED_CONTENT" ] && printf '\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B' | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) conv=notrunc
 
       - name: 生成 .config & 强韧下载软件包
         run: |
