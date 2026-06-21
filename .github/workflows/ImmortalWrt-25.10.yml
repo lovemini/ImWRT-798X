@@ -19,7 +19,7 @@ on:
 
 env:
   REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
-  REPO_BRANCH: 25.12-dev
+  REPO_BRANCH: 25.12
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: mt7981-ax3000.config
   DIY_P1_SH: scripts/diy-part1.sh
