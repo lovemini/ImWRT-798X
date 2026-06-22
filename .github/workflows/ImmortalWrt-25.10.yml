@@ -205,7 +205,7 @@ jobs:
           files: ${{ env.FIRMWARE_PATH }}/*
           overwrite_files: true
           body: |
-            ## ImmortalWrt 自动编译
+            ## ImmortalWrt-25.10 自动编译
             - **设备型号**: ${{ github.event.inputs.device_model }}
             - **5G 25dB**: ${{ github.event.inputs.enable_5g_25db }} (${{ env.DB_SUFFIX }})
             - **编译时间**: ${{ env.DATE }}
