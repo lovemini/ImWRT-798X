@@ -93,7 +93,7 @@ jobs:
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
       - name: 修改5G 25dB
-        if: env.ENABLE_5G_25DB == 'true'
+         if: ${{ github.event.inputs.enable_5g_25db }} == 'true'
         working-directory: ./openwrt
         run: |
           EEPROM_FILE=package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
