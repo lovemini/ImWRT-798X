@@ -13,8 +13,7 @@ on:
           - glinet_gl-mt3000
           - xiaomi_redmi-router-ax6000-stock
 
-        type: boolean
-        default: true
+        
 
 env:
   REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
