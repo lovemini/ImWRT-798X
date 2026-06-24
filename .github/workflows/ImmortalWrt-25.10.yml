@@ -88,7 +88,7 @@ jobs:
           echo "CONFIG_CCACHE=y" >> .config
           
           make defconfig
-          make download -j8 || make download -j1 V=s
+          make download -j12 || make download -j1 V=s
 
       - name: 编译固件
         run: |
@@ -98,7 +98,7 @@ jobs:
           ccache -z
           
           echo "使用 $(nproc) 线程编译"
-          make -j$(nproc) || make -j1 V=s
+          make -j24 || make -j1 V=s
           ccache -s
 
       - name: 收集与整理固件
