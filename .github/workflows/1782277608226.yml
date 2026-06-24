@@ -1,4 +1,4 @@
-name: Speed Optimized - Self-hosted
+name: ImmortalWrt-25.10 (Speed Optimized - Self-hosted)
 
 on:
   workflow_dispatch:
@@ -76,6 +76,13 @@ jobs:
         run: |
           cd openwrt
           [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
+          
+          # ==== 核心修复：强制将错误的 openwrt-25.10 分支修正为 openwrt-25.12 ====
+          if [ -f "feeds.conf.default" ]; then
+            echo "正在修正 feeds.conf.default 中的分支错误..."
+            sed -i 's/;openwrt-25.10/;openwrt-25.12/g' feeds.conf.default
+          fi
+          
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH && $GITHUB_WORKSPACE/$DIY_P1_SH
           ./scripts/feeds update -a && ./scripts/feeds install -a
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
