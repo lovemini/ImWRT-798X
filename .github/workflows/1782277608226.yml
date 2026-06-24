@@ -72,7 +72,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-aarch64-openwrt-${{ github.event.inputs.device_model }}-
 
-     - name: 更新 Feeds & 执行 DIY 脚本
+      - name: 更新 Feeds & 执行 DIY 脚本
         run: |
           cd openwrt
           [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
