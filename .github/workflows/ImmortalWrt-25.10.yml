@@ -94,8 +94,8 @@ jobs:
           ccache -M 3G
           ccache -z
           
-          # 自动化计算：当前系统最大核心数 + 1
-          THREADS=$(( $(nproc) + 1 ))
+          # 自动化计算：当前系统最大核心数 + 10
+          THREADS=$(( $(nproc) + 10 ))
           echo "检测到系统 CPU 核心数: $(nproc)"
           echo "根据方案 2 优化后的编译线程数: $THREADS"
           
