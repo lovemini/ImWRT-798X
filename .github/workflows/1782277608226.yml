@@ -1,0 +1,224 @@
+name: ImmortalWrt-25.10 (Speed Optimized - Self-hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_model:
+        description: '选择设备型号'
+        type: choice
+        required: true
+        options:
+          - cmcc_rax3000m
+      enable_5g_25db:
+        description: '启用5G 25dB修改'
+        type: boolean
+        default: true
+
+env:
+  REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
+  REPO_BRANCH: 25.12
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: mt7981-ax3000.config
+  DIY_P1_SH: scripts/diy-part1.sh
+  DIY_P2_SH: scripts/diy-part3.sh
+  TZ: Asia/Shanghai
+  UPLOAD_FIRMWARE: 'true'
+  WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
+  WEBDAV_USER: ${{ secrets.WEBDAV_USERNAME }}
+  WEBDAV_PASS: ${{ secrets.WEBDAV_PASSWORD }}
+
+jobs:
+  build:
+    # 将运行环境改为你的自托管运行器标签
+    runs-on: self-hosted
+    steps:
+      - name: 基础环境检查
+        uses: actions/checkout@v4
+
+      - name: 安装编译依赖 (Oracle Linux / RHEL 系)
+        run: |
+          echo "==== 开始配置自托管环境依赖 ===="
+          # 开启 EPEL 和 CodeReady 仓库（如果尚未开启）以获取完整的开发工具
+          sudo dnf install -y epel-release
+          sudo dnf config-manager --set-enabled ol9_codeready_builder || true
+          
+          # 安装 RHEL/Oracle Linux 下 OpenWrt 编译所需的依赖
+          sudo dnf groupinstall -y "Development Tools"
+          sudo dnf install -y \
+            clang ncurses-devel openssl-devel python3-setuptools \
+            rsync swig unzip zlib-devel wget curl ccache gawk file \
+            diffutils time git perl-FindBin perl-File-Compare perl-File-Copy
+            
+          # 准备工作目录
+          sudo mkdir -p /workdir && sudo chown -R $USER:$USER /workdir
+
+      - name: 克隆源码
+        working-directory: /workdir
+        run: |
+          rm -rf openwrt
+          git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+          rm -f $GITHUB_WORKSPACE/openwrt
+          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+      - name: 缓存加速
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            /workdir/openwrt/dl
+            /workdir/openwrt/staging_dir/host*
+            /workdir/openwrt/staging_dir/toolchain*
+          key: ${{ runner.os }}-aarch64-openwrt-${{ github.event.inputs.device_model }}-${{ hashFiles('openwrt/include/**') }}
+          restore-keys: |
+            ${{ runner.os }}-aarch64-openwrt-${{ github.event.inputs.device_model }}-
+
+      - name: 更新 Feeds & 执行 DIY 脚本
+        run: |
+          cd openwrt
+          [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
+          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH && $GITHUB_WORKSPACE/$DIY_P1_SH
+          ./scripts/feeds update -a && ./scripts/feeds install -a
+          chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
+
+      - name: 修改5G 25dB
+        if: ${{ github.event.inputs.enable_5g_25db == 'true' }}
+        working-directory: ./openwrt
+        run: |
+          EEPROM_FILE="package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin"
+          OFFSET=$((0x445))
+          BYTES=20
+
+          mkdir -p "$(dirname "$EEPROM_FILE")"
+          if [ ! -f "$EEPROM_FILE" ]; then
+            echo "创建空的 EEPROM 文件..."
+            touch "$EEPROM_FILE"
+            chmod 644 "$EEPROM_FILE"
+          fi
+
+          EXPECTED_CONTENT=$(printf '\x2B%.0s' $(seq 1 $BYTES))
+          CURRENT_CONTENT=$(dd if="$EEPROM_FILE" bs=1 skip=$OFFSET count=$BYTES status=none 2>/dev/null || echo "")
+
+          if [ "$CURRENT_CONTENT" != "$EXPECTED_CONTENT" ]; then
+            echo "正在修改 5G Power 到 25dB (offset 0x${OFFSET})..."
+            printf '\x2B%.0s' $(seq 1 $BYTES) | \
+              dd of="$EEPROM_FILE" bs=1 seek=$OFFSET count=$BYTES conv=notrunc status=none
+            echo "✅ 5G 25dB 修改完成"
+          else
+            echo "5G Power 已为 25dB，无需修改"
+          fi
+
+      - name: 生成 .config & 下载软件包
+        run: |
+          cd openwrt
+          [ -f "$GITHUB_WORKSPACE/$CONFIG_FILE" ] && cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
+          
+          # 清理旧设备配置
+          sed -i '/CONFIG_TARGET_mediatek_filogic_DEVICE_/d' .config || true
+          
+          # 启用当前设备
+          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=y" >> .config
+          echo "CONFIG_CCACHE=y" >> .config
+          
+          make defconfig
+          make download -j8 || make download -j1 V=s
+
+      - name: 编译固件
+        run: |
+          cd openwrt
+          export CCACHE_DIR=$HOME/.ccache
+          ccache -M 5G
+          ccache -z
+          
+          # 针对自托管多核服务器逻辑：如果是高核机器（如 Ampere 64核），建议限制单次编译线程防止 OOM
+          SYS_CORES=$(nproc)
+          if [ $SYS_CORES -gt 16 ]; then
+            BUILD_THREADS=16
+          else
+            BUILD_THREADS=$SYS_CORES
+          fi
+          
+          echo "系统总核心数: $SYS_CORES，分配编译线程数: $BUILD_THREADS"
+          make -j$BUILD_THREADS || make -j1 V=s
+          ccache -s
+
+      - name: 收集与整理固件
+        id: organize
+        if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+        run: |
+          cd openwrt/bin/targets/*/*
+          rm -rf packages 2>/dev/null || true
+          
+          DATE_DISPLAY=$(date +'%Y%m%d %H:%M')
+          DATE_FILE=$(date +'%Y%m%d_%H%M')
+          DB_SUFFIX="stock"
+          [ "${{ github.event.inputs.enable_5g_25db }}" = "true" ] && DB_SUFFIX="25dB-on"
+          
+          echo "DATE=$DATE_DISPLAY" >> $GITHUB_ENV
+          echo "DB_SUFFIX=$DB_SUFFIX" >> $GITHUB_ENV
+          echo "FIRMWARE_VERSION=$(date +%Y%m%d)" >> $GITHUB_ENV
+          echo "device_code=${{ github.event.inputs.device_model }}" >> $GITHUB_ENV
+          
+          # 只保留 sysupgrade 文件
+          for file in *; do
+            [ -f "$file" ] && ! echo "$file" | grep -qE '-(bl2|recovery|sha256sums)' && [[ $file == *sysupgrade* ]] && {
+              EXT="${file##*.}"
+              NEW_NAME="${{ github.event.inputs.device_model }}_${DB_SUFFIX}_${DATE_FILE}_sysupgrade.${EXT}"
+              mv "$file" "$NEW_NAME"
+              echo "✅ 固件就绪: $NEW_NAME"
+            }
+          done
+          
+          rm -f *factory* *recovery* *-bl2* *sha256sums* 2>/dev/null || true
+          
+          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: 删除旧 Release Assets
+        if: steps.organize.outputs.status == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = `Latest-Build-${{ github.event.inputs.device_model }}`;
+            try {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag
+              });
+              for (const asset of release.data.assets) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+              console.log(`✅ 已删除 ${release.data.assets.length} 个旧固件`);
+            } catch (e) {
+              console.log("第一次发布或无旧文件，跳过删除");
+            }
+
+      - name: 上传至 WebDAV
+        if: steps.organize.outputs.status == 'success' && env.WEBDAV_URL != ''
+        run: |
+          cd ${{ env.FIRMWARE_PATH }}
+          for file in *; do
+            [ -f "$file" ] && {
+              curl -u "${{ env.WEBDAV_USER }}:${{ env.WEBDAV_PASS }}" -X DELETE "${{ env.WEBDAV_URL }}/$file" || true
+              curl -k --retry 3 --retry-delay 5 -u "${{ env.WEBDAV_USER }}:${{ env.WEBDAV_PASS }}" -T "$file" "${{ env.WEBDAV_URL }}/$file"
+            }
+          done
+
+      - name: 发布至 GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.status == 'success'
+        with:
+          tag_name: Latest-Build-${{ github.event.inputs.device_model }}
+          files: ${{ env.FIRMWARE_PATH }}/*
+          overwrite_files: true
+          body: |
+            ## ImmortalWrt-25.10 自动编译
+            - **运行平台**: 自托管主机 (Oracle Linux aarch64)
+            - **设备型号**: ${{ github.event.inputs.device_model }}
+            - **5G 25dB**: ${{ github.event.inputs.enable_5g_25db }} (${{ env.DB_SUFFIX }})
+            - **编译时间**: ${{ env.DATE }}
+            - **分支**: ${{ env.REPO_BRANCH }}
