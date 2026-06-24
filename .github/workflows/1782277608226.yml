@@ -1,4 +1,4 @@
-name: ImmortalWrt-25.10 (Speed Optimized - Self-hosted)
+name: Speed Optimized - Self-hosted
 
 on:
   workflow_dispatch:
