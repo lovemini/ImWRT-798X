@@ -12,8 +12,7 @@ on:
           - xiaomi_mi-router-ax3000t
           - glinet_gl-mt3000
           - xiaomi_redmi-router-ax6000-stock
-      enable_5g_25db:
-        description: '启用5G 25dB修改'
+
         type: boolean
         default: true
 
@@ -76,33 +75,7 @@ jobs:
           ./scripts/feeds update -a && ./scripts/feeds install -a
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
-      - name: 修改5G 25dB
-        if: ${{ github.event.inputs.enable_5g_25db == 'true' }}
-        working-directory: ./openwrt
-        run: |
-          EEPROM_FILE="package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin"
-          OFFSET=$((0x445))
-          BYTES=20
-
-          mkdir -p "$(dirname "$EEPROM_FILE")"
-          if [ ! -f "$EEPROM_FILE" ]; then
-            echo "创建空的 EEPROM 文件..."
-            touch "$EEPROM_FILE"
-            chmod 644 "$EEPROM_FILE"
-          fi
-
-          EXPECTED_CONTENT=$(printf '\x2B%.0s' $(seq 1 $BYTES))
-          CURRENT_CONTENT=$(dd if="$EEPROM_FILE" bs=1 skip=$OFFSET count=$BYTES status=none 2>/dev/null || echo "")
-
-          if [ "$CURRENT_CONTENT" != "$EXPECTED_CONTENT" ]; then
-            echo "正在修改 5G Power 到 25dB (offset 0x${OFFSET})..."
-            printf '\x2B%.0s' $(seq 1 $BYTES) | \
-              dd of="$EEPROM_FILE" bs=1 seek=$OFFSET count=$BYTES conv=notrunc status=none
-            echo "✅ 5G 25dB 修改完成"
-          else
-            echo "5G Power 已为 25dB，无需修改"
-          fi
-
+      
       - name: 生成 .config & 下载软件包
         run: |
           cd openwrt
