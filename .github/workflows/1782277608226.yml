@@ -1,4 +1,4 @@
-name: Speed Optimized
+name: ImmortalWrt-25.10 (Speed Optimized - Self-hosted)
 
 on:
   workflow_dispatch:
@@ -72,15 +72,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-aarch64-openwrt-${{ github.event.inputs.device_model }}-
 
-      - name: 更新 Feeds & 执行 DIY 脚本
+     - name: 更新 Feeds & 执行 DIY 脚本
         run: |
           cd openwrt
           [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
           
-          # ==== 核心修复：强制将错误的 openwrt-25.10 分支修正为 openwrt-25.12 ====
+          # ==== 核心修复：清理 feeds.conf.default 中的死板分支，自动匹配默认分支 ====
           if [ -f "feeds.conf.default" ]; then
-            echo "正在修正 feeds.conf.default 中的分支错误..."
+            echo "正在优化 feeds.conf.default 分支配置..."
+            # 1. 优先把残留的 25.10 统一替换掉
             sed -i 's/;openwrt-25.10/;openwrt-25.12/g' feeds.conf.default
+            # 2. 针对报错的 routing 和 telephony，移除其尾部死板的分支指定，使其自动使用默认可用分支
+            sed -i 's/;openwrt-25.12//g' feeds.conf.default
           fi
           
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH && $GITHUB_WORKSPACE/$DIY_P1_SH
