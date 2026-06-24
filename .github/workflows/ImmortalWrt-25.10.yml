@@ -13,8 +13,6 @@ on:
           - glinet_gl-mt3000
           - xiaomi_redmi-router-ax6000-stock
 
-        
-
 env:
   REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
   REPO_BRANCH: 25.12
@@ -74,7 +72,6 @@ jobs:
           ./scripts/feeds update -a && ./scripts/feeds install -a
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
-      
       - name: 生成 .config & 下载软件包
         run: |
           cd openwrt
@@ -97,8 +94,13 @@ jobs:
           ccache -M 3G
           ccache -z
           
-          echo "使用 $(nproc) 线程编译"
-          make -j24 || make -j1 V=s
+          # 自动化计算：当前系统最大核心数 + 1
+          THREADS=$(( $(nproc) + 1 ))
+          echo "检测到系统 CPU 核心数: $(nproc)"
+          echo "根据方案 2 优化后的编译线程数: $THREADS"
+          
+          # 使用计算出的线程数编译，失败时降级为单线程输出排错日志
+          make -j$THREADS || make -j1 V=s
           ccache -s
 
       - name: 收集与整理固件
@@ -110,19 +112,16 @@ jobs:
           
           DATE_DISPLAY=$(date +'%Y%m%d %H:%M')
           DATE_FILE=$(date +'%Y%m%d_%H%M')
-          DB_SUFFIX="stock"
-          [ "${{ github.event.inputs.enable_5g_25db }}" = "true" ] && DB_SUFFIX="25dB-on"
           
           echo "DATE=$DATE_DISPLAY" >> $GITHUB_ENV
-          echo "DB_SUFFIX=$DB_SUFFIX" >> $GITHUB_ENV
           echo "FIRMWARE_VERSION=$(date +%Y%m%d)" >> $GITHUB_ENV
           echo "device_code=${{ github.event.inputs.device_model }}" >> $GITHUB_ENV
           
-          # 只保留 sysupgrade 文件
+          # 只保留 sysupgrade 文件，并精简名称
           for file in *; do
             [ -f "$file" ] && ! echo "$file" | grep -qE '-(bl2|recovery|sha256sums)' && [[ $file == *sysupgrade* ]] && {
               EXT="${file##*.}"
-              NEW_NAME="${{ github.event.inputs.device_model }}_${DB_SUFFIX}_${DATE_FILE}_sysupgrade.${EXT}"
+              NEW_NAME="${{ github.event.inputs.device_model }}_${DATE_FILE}_sysupgrade.${EXT}"
               mv "$file" "$NEW_NAME"
               echo "✅ 固件就绪: $NEW_NAME"
             }
@@ -178,6 +177,5 @@ jobs:
           body: |
             ## ImmortalWrt-25.10 自动编译
             - **设备型号**: ${{ github.event.inputs.device_model }}
-            - **5G 25dB**: ${{ github.event.inputs.enable_5g_25db }} (${{ env.DB_SUFFIX }})
             - **编译时间**: ${{ env.DATE }}
             - **分支**: ${{ env.REPO_BRANCH }}
