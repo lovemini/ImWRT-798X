@@ -3,7 +3,7 @@
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hhCodingCat/ImWRT-798X/ImmortalWrt-24.10-6.6固件构建?label=Build%20Status)
 ![License](https://img.shields.io/github/license/hhCodingCat/ImWRT-798X?color=blue)
 
-这是一个用于自动编译 [ImmortalWrt 24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10) 固件的 **GitHub Actions 工作流**，专为基于 **MediaTek MT7981** 芯片的设备设计。支持定期检查源码更新、为多种设备型号编译固件，并将固件文件上传至 **GitHub Release** 和 **WebDAV**。通过直观的 **下拉列表** 选择设备型号，操作简单，特别适合 **小白和无经验用户** 快速上手！
+这是一个用于自动编译 [ImmortalWrt 24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10) 和[ImmortalWrt 25.12](https://github.com/chasey-dev/immortalwrt-mt798x-rebase)固件的 **GitHub Actions 工作流**，专为基于 **MediaTek MT7981** 芯片的设备设计。支持定期检查源码更新、为多种设备型号编译固件，并将固件文件上传至 **GitHub Release** 和 **WebDAV**。通过直观的 **下拉列表** 选择设备型号，操作简单，特别适合 **小白和无经验用户** 快速上手！
 
 ---
 
