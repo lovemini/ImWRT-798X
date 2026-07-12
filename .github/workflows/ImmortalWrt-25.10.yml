@@ -78,10 +78,12 @@ jobs:
           [ -f "$GITHUB_WORKSPACE/$CONFIG_FILE" ] && cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           
           # 清理旧设备配置
-          sed -i '/CONFIG_TARGET_mediatek_filogic_DEVICE_/d' .config || true
+          sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config || true
+          sed -i '/CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_/d' .config || true
           
           # 启用当前设备
-          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=y" >> .config
+          echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=y" >> .config
+          echo -e "CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=\"\"" >> .config
           echo "CONFIG_CCACHE=y" >> .config
           
           make defconfig
