@@ -282,7 +282,7 @@ jobs:
           EOF
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - uses: softprops/action-gh-release@v6
+      - uses: softprops/action-gh-release@v3
         if: steps.tag.outputs.status == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
