@@ -75,9 +75,9 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: last-checked-sha
         continue-on-error: true
@@ -102,7 +102,7 @@ jobs:
             echo "should_build=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: last-checked-sha
           path: last_checked_sha.txt
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m", "cmcc_rax3000m-emmc", "cudy_ap3000-v1", "cudy_ap3000outdoor-v1", "cudy_m3000-v1", "cudy_re3000-v1", "cudy_tr3000-v1", "cudy_tr3000-v1-256mb", "cudy_wr3000-v1", "cudy_wr3000s-v1", "glinet_gl-mt2500", "glinet_gl-mt3000", "glinet_gl-x3000", "glinet_gl-xe3000", "h3c_magic-nx30-pro", "huasifei_wh3000-pro", "huasifei_wh3000-emmc", "jcg_q30-pro", "livinet_zr-3020", "routerich_ax3000", "routerich_ax3000-v1", "xiaomi_mi-router-ax3000t", "xiaomi_mi-router-wr30u-stock", "xiaomi_redmi-router-ax6000-stock", "zyxel_ex5601-t0-stock", "zyxel_nwa50ax-pro"]') }}
+        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m"]') }}
       max-parallel: 18
     steps:
       - name: 打印调试信息
@@ -126,7 +126,7 @@ jobs:
         run: |
           echo "device_code=${{ matrix.device_model }}" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 初始化环境
         env:
@@ -146,7 +146,7 @@ jobs:
           echo "export CCACHE_DIR=\$HOME/.ccache" >> $GITHUB_ENV
           ccache -M 5G
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             /var/cache/apt/archives
@@ -200,7 +200,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compile-log-${{ env.device_code }}
           path: |
@@ -282,7 +282,7 @@ jobs:
           EOF
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v6
         if: steps.tag.outputs.status == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
