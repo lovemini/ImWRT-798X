@@ -71,7 +71,7 @@ env:
 
 jobs:
   check-source-updates:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
     steps:
