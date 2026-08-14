@@ -1,11 +1,11 @@
 name: github env test
 on:
-  push:
-  branches:
-  - main
+ push:
+ branches:
+ - main
 jobs:
-  build:
-  runs-on: ubuntu-latest
-  steps:
-  - name: Step
-    run: echo ${GITHUB_SHA::7}
+ build:
+ runs-on: ubuntu-latest
+ steps:
+ - name: Step
+  run: echo ${GITHUB_SHA::7}
