@@ -1,8 +1,9 @@
 name: github env test
 on:
  push:
- branches:
- - main
+  branches:
+   - main
+   
 jobs:
  build:
  runs-on: ubuntu-latest
