@@ -271,22 +271,31 @@ jobs:
         run: |
           set -e
           cd openwrt/bin/targets/*/*
+
+          if [ "${ENABLE_5G_25DB}" = "true" ]; then
+            HP_SHORT="已启用 (5G 25dB)"
+            HP_LINE="- 支持 5G 25dB 高功率。"
+          else
+            HP_SHORT="未启用"
+            HP_LINE=""
+          fi
+
           cat << EOF > README.md
 # ImmortalWrt 固件说明
-- **固件版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
-- **设备型号**: ${{ env.device_code }}
+- **固件版本**: ImmortalWrt ${FIRMWARE_VERSION}
+- **设备型号**: ${device_code}
 - **构建时间**: $(date +"%Y-%m-%d %H:%M %Z")
-- **高功率模式**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用 (5G 25dB)' || '未启用' }}
-- **来源**: ${{ env.REPO_URL }} (分支: ${{ env.REPO_BRANCH }})
+- **高功率模式**: ${HP_SHORT}
+- **来源**: ${REPO_URL} (分支: ${REPO_BRANCH})
 ## 功能
 - 优化网络性能，支持USB共享、HNAT加速、Ksmbd共享等。
-${{ env.ENABLE_5G_25DB == 'true' && '- 支持 5G 25dB 高功率。' || '' }}
+${HP_LINE}
 - 默认地址: 192.168.2.1 (密码空)
 ## 安装
 - 备份配置，使用sysupgrade保留配置，factory全新安装。
 - 通过Web上传.bin文件，重启。
 ## 注意
-第三方固件，自行风险。支持: https://github.com/padavanonly/immortalwrt-mt798x-24.10
+第三方固件，自行风险。支持: ${REPO_URL}
 EOF
 
       - name: 生成发布描述
@@ -294,20 +303,29 @@ EOF
         if: env.UPLOAD_RELEASE == 'true' && steps.version.outputs.status == 'success'
         run: |
           set -e
-          echo "RELEASE_TAG=ImmortalWrt-24.10-${{ env.device_code }}-${{ env.FIRMWARE_VERSION }}" >> $GITHUB_OUTPUT
+
+          if [ "${ENABLE_5G_25DB}" = "true" ]; then
+            HP_SHORT="已启用"
+            HP_LINE="- 5G 25dB 高功率。"
+          else
+            HP_SHORT="未启用"
+            HP_LINE=""
+          fi
+
+          echo "RELEASE_TAG=ImmortalWrt-24.10-${device_code}-${FIRMWARE_VERSION}" >> $GITHUB_OUTPUT
           cat << EOF > release.txt
 # ImmortalWrt 固件发布
-- **版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
-- **型号**: ${{ env.device_code }}
+- **版本**: ImmortalWrt ${FIRMWARE_VERSION}
+- **型号**: ${device_code}
 - **时间**: $(date +"%Y-%m-%d %H:%M %Z")
-- **5G**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用' || '未启用' }}
+- **5G**: ${HP_SHORT}
 ## 特性
 - 优化性能，支持USB/HNAT/Ksmbd。
-${{ env.ENABLE_5G_25DB == 'true' && '- 5G 25dB 高功率。' || '' }}
+${HP_LINE}
 - 地址: 192.168.2.1 (空密码)
 ## 安装
 备份 > 上传sysupgrade/factory > 重启。
-详情见README.md。仓库: https://github.com/padavanonly/immortalwrt-mt798x-24.10
+详情见README.md。仓库: ${REPO_URL}
 EOF
           echo "status=success" >> $GITHUB_OUTPUT
 
