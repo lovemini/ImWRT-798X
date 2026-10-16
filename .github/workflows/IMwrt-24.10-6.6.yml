@@ -113,7 +113,34 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m", "cmcc_rax3000m-emmc", "cudy_ap3000-v1", "cudy_ap3000outdoor-v1", "cudy_m3000-v1", "cudy_re3000-v1", "cudy_tr3000-v1", "cudy_tr3000-v1-256mb", "cudy_wr3000-v1", "cudy_wr3000s-v1", "glinet_gl-mt2500", "glinet_gl-mt3000", "glinet_gl-x3000", "glinet_gl-xe3000", "h3c_magic-nx30-pro", "huasifei_wh3000-pro", "huasifei_wh3000-emmc", "jcg_q30-pro", "livinet_zr-3020", "routerich_ax3000", "routerich_ax3000-v1", "xiaomi_mi-router-ax3000t", "xiaomi_mi-router-wr30u-stock", "xiaomi_redmi-router-ax6000-stock", "zyxel_ex5601-t0-stock", "zyxel_nwa50ax-pro"]') }}
+        device_model: [
+          "cmcc_rax3000m",
+          "cmcc_rax3000m-emmc",
+          "cudy_ap3000-v1",
+          "cudy_ap3000outdoor-v1",
+          "cudy_m3000-v1",
+          "cudy_re3000-v1",
+          "cudy_tr3000-v1",
+          "cudy_tr3000-v1-256mb",
+          "cudy_wr3000-v1",
+          "cudy_wr3000s-v1",
+          "glinet_gl-mt2500",
+          "glinet_gl-mt3000",
+          "glinet_gl-x3000",
+          "glinet_gl-xe3000",
+          "h3c_magic-nx30-pro",
+          "huasifei_wh3000-pro",
+          "huasifei_wh3000-emmc",
+          "jcg_q30-pro",
+          "livinet_zr-3020",
+          "routerich_ax3000",
+          "routerich_ax3000-v1",
+          "xiaomi_mi-router-ax3000t",
+          "xiaomi_mi-router-wr30u-stock",
+          "xiaomi_redmi-router-ax6000-stock",
+          "zyxel_ex5601-t0-stock",
+          "zyxel_nwa50ax-pro"
+        ]
       max-parallel: 18
     steps:
       - name: 打印调试信息
@@ -173,10 +200,10 @@ jobs:
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
           echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ env.device_code }}=y" >> openwrt/.config
           cd openwrt
-          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH $GITHUB_WORKSPACE/$DIY_P2_SH
-          $GITHUB_WORKSPACE/$DIY_P1_SH
+          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH $GITHUB_WORKSPACE/$DIY_P2_SH || true
+          $GITHUB_WORKSPACE/$DIY_P1_SH || true
           ./scripts/feeds update -a && ./scripts/feeds install -a
-          $GITHUB_WORKSPACE/$DIY_P2_SH
+          $GITHUB_WORKSPACE/$DIY_P2_SH || true
           make defconfig
           make download -j8
 
@@ -185,10 +212,12 @@ jobs:
         working-directory: ./openwrt
         run: |
           EEPROM_FILE=package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
-          EXPECTED_CONTENT=$(printf '\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B')
+          EXPECTED_CONTENT=$(printf '\x2B%.0s' {1..20})
           mkdir -p "$(dirname "$EEPROM_FILE")" && touch "$EEPROM_FILE" && chmod 644 "$EEPROM_FILE"
           CURRENT_CONTENT=$(dd if="$EEPROM_FILE" bs=1 skip=$((0x445)) count=20 2>/dev/null || echo "")
-          [ "$CURRENT_CONTENT" != "$EXPECTED_CONTENT" ] && printf '\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B\x2B' | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) conv=notrunc
+          if [ "$CURRENT_CONTENT" != "$EXPECTED_CONTENT" ]; then
+            printf '\x2B%.0s' {1..20} | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) conv=notrunc 2>/dev/null || true
+          fi
 
       - name: 编译固件
         id: compile
@@ -243,22 +272,22 @@ jobs:
           set -e
           cd openwrt/bin/targets/*/*
           cat << EOF > README.md
-          # ImmortalWrt 固件说明
-          - **固件版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
-          - **设备型号**: ${{ env.device_code }}
-          - **构建时间**: $(date +"%Y-%m-%d %H:%M %Z")
-          - **高功率模式**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用 (5G 25dB)' || '未启用' }}
-          - **来源**: ${{ env.REPO_URL }} (分支: ${{ env.REPO_BRANCH }})
-          ## 功能
-          - 优化网络性能，支持USB共享、HNAT加速、Ksmbd共享等。
-          ${{ env.ENABLE_5G_25DB == 'true' && '- 支持 5G 25dB 高功率。' || '' }}
-          - 默认地址: 192.168.2.1 (密码空)
-          ## 安装
-          - 备份配置，使用sysupgrade保留配置，factory全新安装。
-          - 通过Web上传.bin文件，重启。
-          ## 注意
-          第三方固件，自行风险。支持: https://github.com/padavanonly/immortalwrt-mt798x-24.10
-          EOF
+# ImmortalWrt 固件说明
+- **固件版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
+- **设备型号**: ${{ env.device_code }}
+- **构建时间**: $(date +"%Y-%m-%d %H:%M %Z")
+- **高功率模式**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用 (5G 25dB)' || '未启用' }}
+- **来源**: ${{ env.REPO_URL }} (分支: ${{ env.REPO_BRANCH }})
+## 功能
+- 优化网络性能，支持USB共享、HNAT加速、Ksmbd共享等。
+${{ env.ENABLE_5G_25DB == 'true' && '- 支持 5G 25dB 高功率。' || '' }}
+- 默认地址: 192.168.2.1 (密码空)
+## 安装
+- 备份配置，使用sysupgrade保留配置，factory全新安装。
+- 通过Web上传.bin文件，重启。
+## 注意
+第三方固件，自行风险。支持: https://github.com/padavanonly/immortalwrt-mt798x-24.10
+EOF
 
       - name: 生成发布描述
         id: tag
@@ -267,19 +296,19 @@ jobs:
           set -e
           echo "RELEASE_TAG=ImmortalWrt-24.10-${{ env.device_code }}-${{ env.FIRMWARE_VERSION }}" >> $GITHUB_OUTPUT
           cat << EOF > release.txt
-          # ImmortalWrt 固件发布
-          - **版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
-          - **型号**: ${{ env.device_code }}
-          - **时间**: $(date +"%Y-%m-%d %H:%M %Z")
-          - **5G**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用' || '未启用' }}
-          ## 特性
-          - 优化性能，支持USB/HNAT/Ksmbd。
-          ${{ env.ENABLE_5G_25DB == 'true' && '- 5G 25dB 高功率。' || '' }}
-          - 地址: 192.168.2.1 (空密码)
-          ## 安装
-          备份 > 上传sysupgrade/factory > 重启。
-          详情见README.md。仓库: https://github.com/padavanonly/immortalwrt-mt798x-24.10
-          EOF
+# ImmortalWrt 固件发布
+- **版本**: ImmortalWrt ${{ env.FIRMWARE_VERSION }}
+- **型号**: ${{ env.device_code }}
+- **时间**: $(date +"%Y-%m-%d %H:%M %Z")
+- **5G**: ${{ env.ENABLE_5G_25DB == 'true' && '已启用' || '未启用' }}
+## 特性
+- 优化性能，支持USB/HNAT/Ksmbd。
+${{ env.ENABLE_5G_25DB == 'true' && '- 5G 25dB 高功率。' || '' }}
+- 地址: 192.168.2.1 (空密码)
+## 安装
+备份 > 上传sysupgrade/factory > 重启。
+详情见README.md。仓库: https://github.com/padavanonly/immortalwrt-mt798x-24.10
+EOF
           echo "status=success" >> $GITHUB_OUTPUT
 
       - uses: softprops/action-gh-release@v2
@@ -308,7 +337,6 @@ jobs:
 
           for FILE in $FIRMWARE_FILES; do
             BASE_NAME=$(basename "$FILE")
-            
             if echo "$BASE_NAME" | grep -q "README"; then
               NEW_NAME="${{ env.device_code }}-README.md"
             else
@@ -321,7 +349,7 @@ jobs:
             curl --retry 3 --retry-delay 5 -u "${{ env.WEBDAV_USERNAME }}:${{ env.WEBDAV_PASSWORD }}" \
               -T "$FILE" "${{ env.WEBDAV_URL }}/$REMOTE_DIR/$NEW_NAME" \
               -w "%{http_code}" -o /dev/null || exit 1
-            
+
             echo "上传成功：$REMOTE_DIR/$NEW_NAME (SHA256: $SHA256)"
           done
 
@@ -330,7 +358,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release list --repo ${{ github.repository }} --limit 20 --json tagName --jq ".[] | select(.tagName | startswith(\"ImmortalWrt-24.10-${{ env.device_code }}\")) | .tagName" | tail -n +4 | xargs -I {} -r gh release delete {} --yes || true
+          set -e
+          # 删除保留数量以外的旧 Release，仅保留最新 3 个相同前缀的 Release
+          gh release list --repo ${{ github.repository }} --limit 50 --json tagName --jq ".[] | .tagName" | \
+            grep "^ImmortalWrt-24.10-${{ env.device_code }}" | \
+            awk 'NR>3' | while read -r tag; do
+              echo "Deleting release: $tag"
+              gh release delete --repo ${{ github.repository }} --yes "$tag" || true
+            done
 
       - uses: Mattraks/delete-workflow-runs@v2
         if: steps.tag.outputs.status == 'success'
