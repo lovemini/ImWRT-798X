@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install -y jq
           # 安装最新 gh（ubuntu-latest 的 gh 可能较旧，避免 bug）
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
           sudo apt-get update
           sudo apt-get install -y gh
           gh --version
@@ -107,13 +107,13 @@ jobs:
               # 无论如何，确保 Tag 被删除（容错 422）
               echo "  确保 Tag 已删除..."
               for try in {1..3}; do
-                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1)
+                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1 || true)
                 RET=$?
                 if [ $RET -eq 0 ]; then
                   echo "  Tag 删除成功"
                   break
-                elif echo "$OUTPUT" | grep -qi "Reference does not exist\|not found"; then
-                  echo "  Tag 已不存在（422 Reference does not exist），视为已清理"
+                elif echo "$OUTPUT" | grep -qi "Reference does not exist\|not found\|422"; then
+                  echo "  Tag 已不存在，视为已清理"
                   break
                 else
                   echo "  删除 Tag 失败（尝试 $try/3）：$OUTPUT"
@@ -130,9 +130,9 @@ jobs:
           set -euo pipefail
 
           echo "获取匹配的 Tags..."
-          TAGS_JSON=$(gh api --paginate repos/${{ github.repository }}/tags --jq '
-            map(select(.name | test("immortalwrt-24.10"; "i")))
-          ') || { echo "获取 Tags 失败"; exit 1; }
+          TAGS_JSON=$(gh api --paginate repos/${{ github.repository }}/tags --jq '.[ ]' 2>/dev/null | jq -s '[.[]]' || true)
+          # Filter tags by name case-insensitive
+          TAGS_JSON=$(echo "$TAGS_JSON" | jq '[.[] | select(.name | test("immortalwrt-24.10";"i"))]') || { echo "获取 Tags 失败"; exit 1; }
 
           TAG_COUNT=$(echo "$TAGS_JSON" | jq 'length' || echo 0)
           echo "找到 $TAG_COUNT 个匹配 Tags"
@@ -142,11 +142,12 @@ jobs:
             exit 0
           fi
 
-          CURRENT_TAGS=$(gh release list --json tagName --jq '.[].tagName' | sort -u || echo "")
+          # Build array of current release tag names
+          CURRENT_TAGS_JSON=$(gh release list --json tagName --limit 1000 --jq '.[].tagName' | jq -R -s 'split("\n")[:-1]') || CURRENT_TAGS_JSON='[]'
 
-          TO_DELETE_TAGS=$(echo "$TAGS_JSON" | jq -r --argjson curr "$(echo "$CURRENT_TAGS" | jq -Rs .)" '
+          TO_DELETE_TAGS=$(echo "$TAGS_JSON" | jq -r --argjson curr "$CURRENT_TAGS_JSON" '
             .[] | .name as $n |
-            if ($curr | contains($n)) then empty else $n end
+            if ($curr | index($n)) then empty else $n end
           ' || echo "")
 
           if [ -z "$TO_DELETE_TAGS" ]; then
@@ -159,13 +160,13 @@ jobs:
               [ -z "$tag" ] && continue
               echo "删除孤立 Tag: $tag"
               for try in {1..4}; do
-                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1)
+                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1 || true)
                 RET=$?
                 if [ $RET -eq 0 ]; then
                   echo "  成功"
                   break
-                elif echo "$OUTPUT" | grep -qi "does not exist\|not found"; then
-                  echo "  已不存在（422），跳过"
+                elif echo "$OUTPUT" | grep -qi "does not exist\|not found\|422"; then
+                  echo "  已不存在（或已被删除），跳过"
                   break
                 else
                   echo "  失败（尝试 $try/4）：$OUTPUT"
@@ -187,7 +188,4 @@ jobs:
           ' || echo "无"
 
           echo -e "\n剩余 Tags（前10）："
-          gh api repos/${{ github.repository }}/tags --jq '
-            map(select(.name | test("immortalwrt-24.10"; "i"))) |
-            sort_by(.commit.author.date) | reverse | .[:10] | .[].name // "无剩余 Tag"
-          '
+          gh api repos/${{ github.repository }}/tags --jq '.[] | .name' | sed -n '1,10p' || echo "无剩余 Tag"
