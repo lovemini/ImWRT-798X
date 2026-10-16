@@ -67,9 +67,22 @@ jobs:
       - name: 更新 Feeds & 执行 DIY 脚本
         run: |
           cd openwrt
+          # If the repository provides a feeds.conf.default in the workflow workspace, use it
           [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
+
+          # Run user DIY part1 script if provided
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH && $GITHUB_WORKSPACE/$DIY_P1_SH
+
+          # Ensure luci feed exists so luci/luci-i18n packages can be found during package install
+          if ! grep -E '^src-.*luci' feeds.conf.default >/dev/null 2>&1; then
+            echo 'src-git luci https://github.com/openwrt/luci' >> feeds.conf.default
+            echo "Added luci feed to feeds.conf.default"
+          fi
+
+          # Update and install all feeds (including luci)
           ./scripts/feeds update -a && ./scripts/feeds install -a
+
+          # Run user DIY part3 script if provided
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
       - name: 生成 .config & 下载软件包
