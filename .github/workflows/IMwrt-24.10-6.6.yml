@@ -67,80 +67,49 @@ env:
   WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
   WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
   WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
-  ENABLE_5G_25DB: ${{ github.event.inputs.enable_5g_25db || true }}
+  ENABLE_5G_25DB: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_5g_25db }}
 
 jobs:
   check-source-updates:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
+      latest_sha: ${{ steps.check.outputs.latest_sha }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/cache/restore@v4
         with:
-          name: last-checked-sha
-        continue-on-error: true
+          path: last_checked_sha.txt
+          key: ${{ runner.os }}-last-checked-sha-${{ github.run_id }}
+          restore-keys: ${{ runner.os }}-last-checked-sha-
 
       - name: 检查源代码仓库更新
         id: check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sudo apt-get update -y && sudo apt-get install -y --no-install-recommends gh
-          LATEST_SHA=$(gh api repos/padavanonly/immortalwrt-mt798x-24.10/commits/$REPO_BRANCH --jq '.sha' || echo "")
+          set -euo pipefail
+          LATEST_SHA=$(git ls-remote "$REPO_URL" "refs/heads/$REPO_BRANCH" | awk 'NR == 1 { print $1 }')
           if [ -z "$LATEST_SHA" ]; then
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "未能从 $REPO_URL 获取分支 $REPO_BRANCH 的最新提交" >&2
+            exit 1
           fi
+          echo "latest_sha=$LATEST_SHA" >> "$GITHUB_OUTPUT"
           LAST_CHECKED_FILE="last_checked_sha.txt"
           LAST_CHECKED_SHA=$(cat "$LAST_CHECKED_FILE" 2>/dev/null || echo "")
           if [ "$LATEST_SHA" != "$LAST_CHECKED_SHA" ]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "$LATEST_SHA" > "$LAST_CHECKED_FILE"
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: last-checked-sha
-          path: last_checked_sha.txt
-
   build:
     needs: check-source-updates
-    if: github.event_name == 'workflow_dispatch' || needs.check-source-updates.outputs.should_build == 'true'
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.check-source-updates.outputs.should_build == 'true')
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        device_model: [
-          "cmcc_rax3000m",
-          "cmcc_rax3000m-emmc",
-          "cudy_ap3000-v1",
-          "cudy_ap3000outdoor-v1",
-          "cudy_m3000-v1",
-          "cudy_re3000-v1",
-          "cudy_tr3000-v1",
-          "cudy_tr3000-v1-256mb",
-          "cudy_wr3000-v1",
-          "cudy_wr3000s-v1",
-          "glinet_gl-mt2500",
-          "glinet_gl-mt3000",
-          "glinet_gl-x3000",
-          "glinet_gl-xe3000",
-          "h3c_magic-nx30-pro",
-          "huasifei_wh3000-pro",
-          "huasifei_wh3000-emmc",
-          "jcg_q30-pro",
-          "livinet_zr-3020",
-          "routerich_ax3000",
-          "routerich_ax3000-v1",
-          "xiaomi_mi-router-ax3000t",
-          "xiaomi_mi-router-wr30u-stock",
-          "xiaomi_redmi-router-ax6000-stock",
-          "zyxel_ex5601-t0-stock",
-          "zyxel_nwa50ax-pro"
-        ]
+        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m","cmcc_rax3000m-emmc","cudy_ap3000-v1","cudy_ap3000outdoor-v1","cudy_m3000-v1","cudy_re3000-v1","cudy_tr3000-v1","cudy_tr3000-v1-256mb","cudy_wr3000-v1","cudy_wr3000s-v1","glinet_gl-mt2500","glinet_gl-mt3000","glinet_gl-x3000","glinet_gl-xe3000","h3c_magic-nx30-pro","huasifei_wh3000-pro","huasifei_wh3000-emmc","jcg_q30-pro","livinet_zr-3020","routerich_ax3000","routerich_ax3000-v1","xiaomi_mi-router-ax3000t","xiaomi_mi-router-wr30u-stock","xiaomi_redmi-router-ax6000-stock","zyxel_ex5601-t0-stock","zyxel_nwa50ax-pro"]') }}
       max-parallel: 18
     steps:
       - name: 打印调试信息
@@ -257,7 +226,7 @@ jobs:
           cd openwrt/bin/targets/*/*
           rm -rf packages
           for file in *sysupgrade* *factory*; do
-            [ -f "$file" ] && ! echo "$file" | grep -q "-bl2" && {
+            [ -f "$file" ] && [[ "$file" != *-bl2* ]] && {
               TYPE=$(echo "$file" | grep -o "sysupgrade\|factory")
               EXT="${file##*.}"
               mv "$file" "${{ env.device_code }}_25dB-on_${{ env.FIRMWARE_VERSION }}_${TYPE}.${EXT}"
@@ -390,3 +359,24 @@ EOF
         with:
           retain_days: 7
           keep_minimum_runs: 3
+
+  record-source-update:
+    needs: [check-source-updates, build]
+    if: always() && needs.check-source-updates.outputs.should_build == 'true' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: last_checked_sha.txt
+          key: ${{ runner.os }}-last-checked-sha-${{ github.run_id }}
+          restore-keys: ${{ runner.os }}-last-checked-sha-
+
+      - name: 记录已成功构建的源码提交
+        run: echo "${{ needs.check-source-updates.outputs.latest_sha }}" > last_checked_sha.txt
+
+      - uses: actions/cache/save@v4
+        with:
+          path: last_checked_sha.txt
+          key: ${{ runner.os }}-last-checked-sha-${{ github.run_id }}

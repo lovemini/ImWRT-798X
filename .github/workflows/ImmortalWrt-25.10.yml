@@ -132,7 +132,7 @@ jobs:
           
           # 只保留 sysupgrade 文件，并精简名称
           for file in *; do
-            [ -f "$file" ] && ! echo "$file" | grep -qE '-(bl2|recovery|sha256sums)' && [[ $file == *sysupgrade* ]] && {
+            [ -f "$file" ] && [[ "$file" != *-bl2* && "$file" != *-recovery* && "$file" != *-sha256sums* ]] && [[ $file == *sysupgrade* ]] && {
               EXT="${file##*.}"
               NEW_NAME="${{ github.event.inputs.device_model }}_${DATE_FILE}_sysupgrade.${EXT}"
               mv "$file" "$NEW_NAME"

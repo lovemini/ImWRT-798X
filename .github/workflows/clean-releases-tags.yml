@@ -106,20 +106,25 @@ jobs:
 
               # 无论如何，确保 Tag 被删除（容错 422）
               echo "  确保 Tag 已删除..."
+              deleted=false
               for try in {1..3}; do
-                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1 || true)
-                RET=$?
-                if [ $RET -eq 0 ]; then
+                if OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1); then
                   echo "  Tag 删除成功"
+                  deleted=true
                   break
                 elif echo "$OUTPUT" | grep -qi "Reference does not exist\|not found\|422"; then
                   echo "  Tag 已不存在，视为已清理"
+                  deleted=true
                   break
                 else
                   echo "  删除 Tag 失败（尝试 $try/3）：$OUTPUT"
                   sleep $((try * 5))
                 fi
-              done || echo "  Tag 删除最终失败（可手动检查）"
+              done
+              if [ "$deleted" != true ]; then
+                echo "Tag $tag 删除失败，停止清理" >&2
+                exit 1
+              fi
             done <<< "$TO_DELETE"
           fi
 
@@ -159,20 +164,25 @@ jobs:
             while IFS= read -r tag; do
               [ -z "$tag" ] && continue
               echo "删除孤立 Tag: $tag"
+              deleted=false
               for try in {1..4}; do
-                OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1 || true)
-                RET=$?
-                if [ $RET -eq 0 ]; then
+                if OUTPUT=$(gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>&1); then
                   echo "  成功"
+                  deleted=true
                   break
                 elif echo "$OUTPUT" | grep -qi "does not exist\|not found\|422"; then
                   echo "  已不存在（或已被删除），跳过"
+                  deleted=true
                   break
                 else
                   echo "  失败（尝试 $try/4）：$OUTPUT"
                   sleep $((try * 4))
                 fi
-              done || echo "  删除 $tag 最终失败"
+              done
+              if [ "$deleted" != true ]; then
+                echo "孤立 Tag $tag 删除失败，停止清理" >&2
+                exit 1
+              fi
             done <<< "$TO_DELETE_TAGS"
           fi
 
