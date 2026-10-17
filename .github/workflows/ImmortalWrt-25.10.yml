@@ -20,12 +20,9 @@ env:
   FEEDS_CONF: feeds-25.12.conf.default
   CONFIG_FILE: mt7981-ax3000.config
   DIY_P1_SH: scripts/diy-part1.sh
-  DIY_P2_SH: scripts/diy-part3.sh
+  DIY_P2_SH: scripts/diy-part2.sh
   TZ: Asia/Shanghai
   UPLOAD_FIRMWARE: 'true'
-  WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
-  WEBDAV_USER: ${{ secrets.WEBDAV_USERNAME }}
-  WEBDAV_PASS: ${{ secrets.WEBDAV_PASSWORD }}
 
 jobs:
   build:
@@ -85,8 +82,10 @@ jobs:
           sed -i '/CONFIG_TARGET_DEVICE_/d' .config || true
           sed -i '/CONFIG_TARGET_mediatek_filogic_DEVICE_/d' .config || true
           sed -i '/CONFIG_TARGET_MULTI_PROFILE/d' .config || true
+          DEVICE="${{ github.event.inputs.device_model }}"
+          [ -z "$DEVICE" ] && DEVICE="cmcc_rax3000m"
           echo "CONFIG_TARGET_MULTI_PROFILE=n" >> .config
-          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=y" >> .config
+          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${DEVICE}=y" >> .config
           echo "CONFIG_CCACHE=y" >> .config
           
           make defconfig
@@ -168,17 +167,6 @@ jobs:
             } catch (e) {
               console.log("第一次发布或无旧文件，跳过删除");
             }
-
-      - name: 上传至 WebDAV
-        if: steps.organize.outputs.status == 'success' && env.WEBDAV_URL != ''
-        run: |
-          cd ${{ env.FIRMWARE_PATH }}
-          for file in *; do
-            [ -f "$file" ] && {
-              curl -u "${{ env.WEBDAV_USER }}:${{ env.WEBDAV_PASS }}" -X DELETE "${{ env.WEBDAV_URL }}/$file" || true
-              curl -k --retry 3 --retry-delay 5 -u "${{ env.WEBDAV_USER }}:${{ env.WEBDAV_PASS }}" -T "$file" "${{ env.WEBDAV_URL }}/$file"
-            }
-          done
 
       - name: 发布至 GitHub Release
         uses: softprops/action-gh-release@v2

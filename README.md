@@ -1,120 +1,74 @@
-# ImmortalWrt-Builder-24.10 🚀
+# ImmortalWrt-Builder (MT7981 / RAX3000M) 🚀
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hhCodingCat/ImWRT-798X/ImmortalWrt-24.10-6.6固件构建?label=Build%20Status)
 ![License](https://img.shields.io/github/license/hhCodingCat/ImWRT-798X?color=blue)
+![Target](https://img.shields.io/badge/Target-CMCC_RAX3000M_NAND-orange)
 
-这是一个用于自动编译 [ImmortalWrt 24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10) 固件的 **GitHub Actions 工作流**，专为基于 **MediaTek MT7981** 芯片的设备设计。支持定期检查源码更新、为多种设备型号编译固件，并将固件文件上传至 **GitHub Release** 和 **WebDAV**。通过直观的 **下拉列表** 选择设备型号，操作简单，特别适合 **小白和无经验用户** 快速上手！
-
----
-
-## ✨ 功能亮点
-
-- **支持的设备** 📡：
-  - 中国移动 RAX3000M NAND
-  - 中国移动 RAX3000M eMMC
-  - Cudy AP3000 AX3000
-  - Cudy AP3000 户外版
-  - Cudy M3000 AX3000
-  - Cudy RE3000 AX3000 中继器
-  - Cudy TR3000 AX3000
-  - Cudy TR3000 AX3000 256MB
-  - Cudy WR3000 AX3000
-  - Cudy WR3000S AX3000 增强版
-  - GL.iNet Mango AX MT2500
-  - GL.iNet Beryl AX MT3000
-  - GL.iNet X3000 LTE
-  - GL.iNet XE3000 工业级 LTE
-  - H3C NX30 Pro 魔术路由器
-  - 华思飞 WH3000 Pro
-  - 华思飞 WH3000 eMMC
-  - JCG Q30 Pro AX3000
-  - Livinet ZR3020 AX3000
-  - Routerich AX3000
-  - Routerich AX3000 V1
-  - 小米 AX3000T
-  - 小米 WR30U 原厂
-  - 红米 AX6000 原厂
-  - 合勤 EX5601-T0 原厂
-  - 合勤 NWA50AX Pro AP
-
-- **自动编译** ⏰：每周一北京时间 **13:35（UTC 05:35）** 检查源仓库更新，若有新提交，自动为所有支持的设备编译固件。
-- **5G 25dB 增强** 📶：支持启用 5G 高功率模式（默认启用，手动编译时可选择是否启用）。
-- **固件上传** 📤：编译完成后，上传 `sysupgrade.bin` 和 `factory.bin` 文件至 GitHub Release 和 WebDAV，并附带 README.md 说明文件。
-- **清理机制** 🧹：每个设备保留最近 **3 个固件 Release**，并保留最近 **7 天或至少 3 次** 的工作流运行记录，自动删除旧记录以节省空间。
-- **功能特性** 💻：
-  - 优化网络性能和稳定性
-  - 支持安卓 USB 共享上网
-  - 支持 USB 网卡和 USB 随身 WiFi
-  - MediaTek HNAT 硬件加速
-  - Ksmbd 文件共享
-  - 默认管理地址：`192.168.2.1`，密码为空
-- **小白友好** 🖱️：通过 GitHub Actions 的 **下拉列表** 选择设备型号，无需手动修改配置文件，简单直观，零基础用户也能轻松编译固件！
+基于 GitHub Actions 自动化构建 **ImmortalWrt 24.10 / 25.12** 固件，专为 **中国移动 RAX3000M (NAND)** 等 MediaTek MT7981 设备量身定制。纯净精悍、剔除冗余、开箱即用。
 
 ---
 
-## 🛠️ 使用方法
+## ✨ 特性亮点
 
-### 1. 配置仓库
-1. Fork 或克隆本仓库到你的 GitHub 账户：[hhCodingCat/ImWRT-798X](https://github.com/hhCodingCat/ImWRT-798X)。
-2. 在仓库的 **Settings > Secrets and variables > Actions** 中添加以下 Secrets：
-   - `WEBDAV_URL`：WebDAV 服务器地址（例如：`https://dav.example.com/firmware/`）
-   - `WEBDAV_USERNAME`：WebDAV 用户名
-   - `WEBDAV_PASSWORD`：WebDAV 密码
+- **专注主力机型**：默认适配 **中国移动 RAX3000M (NAND)**，开箱即用。
+- **双分支版本支持**：
+  - **24.10 (Linux 6.6 内核)**：成熟稳定，源自 `padavanonly/immortalwrt-mt798x-24.10`。
+  - **25.12**：前沿版本，源自 `chasey-dev/immortalwrt-mt798x-rebase`。
+- **独立解耦 Feeds**：`feeds-24.10.conf.default` 与 `feeds-25.12.conf.default` 分离，杜绝源污染。
+- **5G 25dB 射频增强**：支持启用高功率模式释放 Wi-Fi 潜能。
+- **MTK 原厂驱动 & 硬件加速**：包含 `kmod-mt_wifi` 与 `kmod-mediatek_hnat` 硬件 NAT 加速。
+- **自动化发布**：构建产物（`sysupgrade.bin`、`factory.bin` 与 `sha256sums`）自动发布至 **GitHub Releases**。
+- **默认网络参数**：
+  - 管理后台：`192.168.2.1`
+  - 登录密码：`无（空密码）`
 
-### 2. 手动触发编译
-1. 进入仓库的 **Actions** 页面，选择 `ImmortalWrt-24.10-6.6固件构建` 工作流。
-2. 点击 **Run workflow**，通过 **下拉列表** 选择：
-   - `device_model`：目标设备型号（直观选择，无需记住复杂代码）
-   - `enable_5g_25db`：是否启用 5G 25dB 增强（默认：启用）
-   - 可选：自定义 `repo_url` 和 `repo_branch`
-3. 手动触发时只编译所选设备；固件编译完成后将上传至 GitHub Release 和 WebDAV，适合零基础用户操作。
+---
 
-### 3. 定时触发
-- 无需手动操作，工作流每周一北京时间 **13:35（UTC 05:35）** 检查源仓库 [padavanonly/immortalwrt-mt798x-24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10) 的 `openwrt-24.10-6.6` 分支。
-- 如果检测到更新，自动为所有支持的设备型号编译固件并上传。
+## 🛠️ 目录架构
 
-### 4. 下载固件
-- **GitHub Release** 📦：在仓库的 **Releases** 页面查找标签（如 `ImmortalWrt-24.10-<device_code>-<version>`），下载 `sysupgrade.bin`、`factory.bin` 和 `README.md`。
-- **WebDAV** ☁️：通过配置的 WebDAV 服务器访问固件，文件名为 `<device_code>_25dB-on_<version>_<type>.bin`。
+```text
+├── .github/workflows/
+│   ├── IMwrt-24.10-6.6.yml         # 24.10-6.6 固件构建工作流
+│   ├── ImmortalWrt-25.10.yml       # 25.12 固件构建工作流
+│   └── clean-releases-tags.yml     # 旧 Release / Tag 定期清理
+├── feeds-24.10.conf.default        # 24.10 专用软件源配置
+├── feeds-25.12.conf.default        # 25.12 专用软件源配置 (含 Aurora 主题)
+├── 24.10-6.6.config                # 24.10 精简内核与插件配置
+├── mt7981-ax3000.config            # 25.12 精简内核与插件配置
+├── files/
+│   └── MT7981_iPAiLNA_EEPROM.bin   # MT7981 EEPROM 射频校准文件
+└── scripts/
+    ├── diy-part1.sh                # 更新 Feeds 前自定义脚本
+    └── diy-part2.sh                # 更新 Feeds 后自定义脚本 (IP、EEPROM链接等)
+```
 
-### 5. 刷写固件
-1. 确认设备型号与固件匹配。
-2. 备份设备原有配置。
-3. 使用 Web 界面或 SSH 刷入：
-   - `sysupgrade.bin`（保留配置）
-   - `factory.bin`（全新安装）
-4. 确保升级过程中电源稳定，避免中断。
+---
+
+## 🚀 使用指南
+
+### 1. 手动触发编译
+1. 打开仓库的 **Actions** 标签页。
+2. 选择工作流：
+   - `ImmortalWrt-24.10-6.6固件构建`
+   - `ImmortalWrt-25.12固件构建`
+3. 点击 **Run workflow**：
+   - 目标机型默认已预选 `cmcc_rax3000m`。
+   - 点击确认即可开始自动编译。
+
+### 2. 下载固件
+编译成功后，固件文件会自动推送到 [Releases](https://github.com/hhCodingCat/ImWRT-798X/releases)：
+- `*sysupgrade.bin`：在原有系统后台直接选择“升级固件”（保留配置或不保留配置刷入）。
+- `*factory.bin`：U-Boot 或原厂恢复后台首次刷入。
+- `sha256sums`：刷机前校验镜像文件完整性。
 
 ---
 
 ## ⚠️ 注意事项
-- **风险提示**：刷写固件可能导致设备变砖，请谨慎操作，确保固件与设备型号完全匹配。
-- **WebDAV 配置**：确保 WebDAV 服务器可访问，且 Secrets 配置正确，否则上传可能失败。
-- **编译时间**：单设备编译可能需要 **1-2 小时**，视 GitHub Actions 资源而定。
-- **5G 25dB 增强**：高功率模式可能受当地法规限制，请确认合法性后再使用。
-- **管理地址**：固件默认 IP 为 `192.168.2.1`，密码为空，升级后建议检查网络设置。
 
----
-
-## 📚 源码
-- 本工作流基于 [padavanonly/immortalwrt-mt798x-24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10)。
-- 分支：`openwrt-24.10-6.6`。
-- 仓库：[hhCodingCat/ImWRT-798X](https://github.com/hhCodingCat/ImWRT-798X)。
-
----
-
-## 🙏 致谢
-特别感谢以下作者和贡献者：
-- **[P3TERX](https://p3terx.com)**：提供了 `diy-part1.sh` 和 `diy-part2.sh` 脚本的初始框架，为本项目的自动化构建提供了重要支持。
-- **[padavanonly](https://github.com/padavanonly)**：维护了 ImmortalWrt MT798x 24.10 源代码仓库，为本项目提供了核心固件源码。
-- **ImmortalWrt 社区**：感谢社区开发者的持续努力，确保了固件的性能优化与功能完善。
-
----
-
-## 🤝 贡献
-欢迎提交 **Issue** 或 **Pull Request**，优化工作流或添加新功能！让我们一起完善这个项目！
+1. **刷机风险**：刷写固件前务必确认设备为 **RAX3000M NAND 闪存版**。
+2. **备份数据**：首次刷入建议在 U-Boot 或系统后台备份 `Factory` 分区与原有配置。
+3. **编译时长**：GitHub Actions 首次完整编译耗时约 40-70 分钟，后续有 ccache 缓存加速会大幅缩短。
 
 ---
 
 ## 📄 许可证
-本项目遵循 **MIT 许可证**，详情见 [LICENSE](LICENSE)。
+本项目遵循 [MIT 许可证](LICENSE)。

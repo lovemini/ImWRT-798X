@@ -64,9 +64,6 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-  WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
-  WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
-  WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
   ENABLE_5G_25DB: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_5g_25db }}
 
 jobs:
@@ -109,8 +106,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m","cmcc_rax3000m-emmc","cudy_ap3000-v1","cudy_ap3000outdoor-v1","cudy_m3000-v1","cudy_re3000-v1","cudy_tr3000-v1","cudy_tr3000-v1-256mb","cudy_wr3000-v1","cudy_wr3000s-v1","glinet_gl-mt2500","glinet_gl-mt3000","glinet_gl-x3000","glinet_gl-xe3000","h3c_magic-nx30-pro","huasifei_wh3000-pro","huasifei_wh3000-emmc","jcg_q30-pro","livinet_zr-3020","routerich_ax3000","routerich_ax3000-v1","xiaomi_mi-router-ax3000t","xiaomi_mi-router-wr30u-stock","xiaomi_redmi-router-ax6000-stock","zyxel_ex5601-t0-stock","zyxel_nwa50ax-pro"]') }}
-      max-parallel: 18
+        device_model: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.device_model)) || fromJSON('["cmcc_rax3000m"]') }}
+      max-parallel: 2
     steps:
       - name: 打印调试信息
         run: |
@@ -309,35 +306,6 @@ jobs:
             ${{ env.FIRMWARE }}/*factory*.*
             ${{ env.FIRMWARE }}/README.md
           overwrite: true
-
-      - name: 上传WebDAV
-        if: steps.version.outputs.status == 'success' && env.WEBDAV_URL && env.WEBDAV_USERNAME && env.WEBDAV_PASSWORD
-        run: |
-          set -e
-          FIRMWARE_FILES=$(find openwrt/bin/targets -type f \( -name "*sysupgrade*.*" -o -name "*factory*.*" -o -name "README.md" \) ! -name "*-bl2*")
-          [ -z "$FIRMWARE_FILES" ] && { echo "没有找到需要上传的文件"; exit 0; }
-
-          REMOTE_DIR="ImmortalWrt2410"
-
-          curl -s -u "${{ env.WEBDAV_USERNAME }}:${{ env.WEBDAV_PASSWORD }}" -X MKCOL "${{ env.WEBDAV_URL }}/$REMOTE_DIR/" || true
-
-          for FILE in $FIRMWARE_FILES; do
-            BASE_NAME=$(basename "$FILE")
-            if echo "$BASE_NAME" | grep -q "README"; then
-              NEW_NAME="${{ env.device_code }}-README.md"
-            else
-              NEW_NAME="$BASE_NAME"
-            fi
-
-            SHA256=$(sha256sum "$FILE" | cut -d' ' -f1)
-
-            echo "正在上传: $NEW_NAME 到 $REMOTE_DIR ..."
-            curl --retry 3 --retry-delay 5 -u "${{ env.WEBDAV_USERNAME }}:${{ env.WEBDAV_PASSWORD }}" \
-              -T "$FILE" "${{ env.WEBDAV_URL }}/$REMOTE_DIR/$NEW_NAME" \
-              -w "%{http_code}" -o /dev/null || exit 1
-
-            echo "上传成功：$REMOTE_DIR/$NEW_NAME (SHA256: $SHA256)"
-          done
 
       - name: 清理旧发布
         if: steps.tag.outputs.status == 'success'
