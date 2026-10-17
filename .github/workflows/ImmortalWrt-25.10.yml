@@ -1,4 +1,4 @@
-name: ImmortalWrt-25.10 (Speed Optimized)
+name: ImmortalWrt-25.12固件构建
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
         description: '选择设备型号'
         type: choice
         required: true
+        default: 'cmcc_rax3000m'
         options:
           - cmcc_rax3000m
           - xiaomi_mi-router-ax3000t
@@ -16,7 +17,7 @@ on:
 env:
   REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
   REPO_BRANCH: 25.12
-  FEEDS_CONF: ''
+  FEEDS_CONF: feeds-25.12.conf.default
   CONFIG_FILE: mt7981-ax3000.config
   DIY_P1_SH: scripts/diy-part1.sh
   DIY_P2_SH: scripts/diy-part3.sh
@@ -29,6 +30,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: 基础环境检查
         uses: actions/checkout@v4
@@ -58,31 +61,19 @@ jobs:
           path: |
             ~/.ccache
             /workdir/openwrt/dl
-            /workdir/openwrt/staging_dir/host*
-            /workdir/openwrt/staging_dir/toolchain*
-          key: ${{ runner.os }}-openwrt-${{ github.event.inputs.device_model }}-${{ hashFiles('openwrt/include/**') }}
+          key: ${{ runner.os }}-openwrt-25.12-${{ github.event.inputs.device_model }}-${{ hashFiles('openwrt/include/**') }}
           restore-keys: |
-            ${{ runner.os }}-openwrt-${{ github.event.inputs.device_model }}-
+            ${{ runner.os }}-openwrt-25.12-${{ github.event.inputs.device_model }}-
 
       - name: 更新 Feeds & 执行 DIY 脚本
         run: |
           cd openwrt
-          # If the repository provides a feeds.conf.default in the workflow workspace, use it
-          [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && mv "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
+          [ -f "$GITHUB_WORKSPACE/$FEEDS_CONF" ] && cp "$GITHUB_WORKSPACE/$FEEDS_CONF" ./feeds.conf.default
 
-          # Run user DIY part1 script if provided
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH && $GITHUB_WORKSPACE/$DIY_P1_SH
 
-          # Ensure luci feed exists so luci/luci-i18n packages can be found during package install
-          if ! grep -E '^src-.*luci' feeds.conf.default >/dev/null 2>&1; then
-            echo 'src-git luci https://github.com/openwrt/luci' >> feeds.conf.default
-            echo "Added luci feed to feeds.conf.default"
-          fi
-
-          # Update and install all feeds (including luci)
           ./scripts/feeds update -a && ./scripts/feeds install -a
 
-          # Run user DIY part3 script if provided
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
 
       - name: 生成 .config & 下载软件包
@@ -90,15 +81,16 @@ jobs:
           cd openwrt
           [ -f "$GITHUB_WORKSPACE/$CONFIG_FILE" ] && cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           
-          # 清理旧设备配置
+          # 清理旧设备多目标配置，确保单设备纯净构建
+          sed -i '/CONFIG_TARGET_DEVICE_/d' .config || true
           sed -i '/CONFIG_TARGET_mediatek_filogic_DEVICE_/d' .config || true
-          
-          # 启用当前设备
+          sed -i '/CONFIG_TARGET_MULTI_PROFILE/d' .config || true
+          echo "CONFIG_TARGET_MULTI_PROFILE=n" >> .config
           echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${{ github.event.inputs.device_model }}=y" >> .config
           echo "CONFIG_CCACHE=y" >> .config
           
           make defconfig
-          make download -j12 || make download -j1 V=s
+          make download -j$(nproc) || make download -j1 V=s
 
       - name: 编译固件
         run: |
@@ -107,14 +99,21 @@ jobs:
           ccache -M 3G
           ccache -z
           
-          # 自动化计算：当前系统最大核心数 + 10
-          THREADS=$(( $(nproc) + 10 ))
-          echo "检测到系统 CPU 核心数: $(nproc)"
-          echo "根据方案 2 优化后的编译线程数: $THREADS"
+          THREADS=$(( $(nproc) + 1 ))
+          echo "系统 CPU 核心数: $(nproc), 编译线程数: $THREADS"
           
-          # 使用计算出的线程数编译，失败时降级为单线程输出排错日志
           make -j$THREADS || make -j1 V=s
           ccache -s
+
+      - name: 上传失败日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-log-25.12-${{ github.event.inputs.device_model }}
+          path: |
+            openwrt/logs/**/*
+            openwrt/*.log
+          if-no-files-found: ignore
 
       - name: 收集与整理固件
         id: organize
@@ -130,17 +129,18 @@ jobs:
           echo "FIRMWARE_VERSION=$(date +%Y%m%d)" >> $GITHUB_ENV
           echo "device_code=${{ github.event.inputs.device_model }}" >> $GITHUB_ENV
           
-          # 只保留 sysupgrade 文件，并精简名称
+          # 提取 sysupgrade 固件并标准化命名
           for file in *; do
             [ -f "$file" ] && [[ "$file" != *-bl2* && "$file" != *-recovery* && "$file" != *-sha256sums* ]] && [[ $file == *sysupgrade* ]] && {
               EXT="${file##*.}"
-              NEW_NAME="${{ github.event.inputs.device_model }}_${DATE_FILE}_sysupgrade.${EXT}"
+              NEW_NAME="immortalwrt-25.12-${{ github.event.inputs.device_model }}-${DATE_FILE}-sysupgrade.${EXT}"
               mv "$file" "$NEW_NAME"
               echo "✅ 固件就绪: $NEW_NAME"
             }
           done
           
           rm -f *factory* *recovery* *-bl2* *sha256sums* 2>/dev/null || true
+          sha256sum *sysupgrade* > sha256sums 2>/dev/null || true
           
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
@@ -150,7 +150,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const tag = `Latest-Build-${{ github.event.inputs.device_model }}`;
+            const tag = `Latest-25.12-${{ github.event.inputs.device_model }}`;
             try {
               const release = await github.rest.repos.getReleaseByTag({
                 owner: context.repo.owner,
@@ -184,11 +184,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: steps.organize.outputs.status == 'success'
         with:
-          tag_name: Latest-Build-${{ github.event.inputs.device_model }}
+          tag_name: Latest-25.12-${{ github.event.inputs.device_model }}
           files: ${{ env.FIRMWARE_PATH }}/*
           overwrite_files: true
           body: |
-            ## ImmortalWrt-25.10 自动编译
-            - **设备型号**: ${{ github.event.inputs.device_model }}
+            ## ImmortalWrt-25.12 固件编译
+            - **目标设备**: ${{ github.event.inputs.device_model }}
             - **编译时间**: ${{ env.DATE }}
-            - **分支**: ${{ env.REPO_BRANCH }}
+            - **上游分支**: ${{ env.REPO_BRANCH }}
+            - **默认后台**: 192.168.2.1 / 无密码

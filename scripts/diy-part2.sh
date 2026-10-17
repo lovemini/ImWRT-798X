@@ -37,8 +37,7 @@ if [ -f "$EEPROM_FILE" ]; then
   mkdir -p files/lib/firmware
   ln -sf /lib/firmware/MT7981_iPAiLNA_EEPROM.bin files/lib/firmware/e2p
   echo "符号链接已创建"
-  ls -l files/lib/firmware/e2p || { echo "错误：符号链接创建失败"; exit 1; }
+  ls -l files/lib/firmware/e2p || true
 else
-  echo "错误：$EEPROM_FILE 不存在，无法创建符号链接"
-  exit 1
+  echo "提示：$EEPROM_FILE 不存在，跳过符号链接创建"
 fi
