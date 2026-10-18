@@ -1,43 +1,57 @@
 #!/bin/bash
-#
-# 版权所有 (c) 2019-2020 P3TERX <https://p3terx.com>
-#
-# 这是一个自由软件，根据 MIT 许可证授权。
-# 详细信息请参见 /LICENSE。
-#
-# https://github.com/P3TERX/Actions-OpenWrt
+# diy-part2.sh
 
-# 修改默认 IP
+# 1. 修改默认 IP 为 192.168.2.1
 CONFIG_FILE="package/base-files/files/bin/config_generate"
 if [ -f "$CONFIG_FILE" ]; then
-  if ! grep -q "192.168.2.1" "$CONFIG_FILE"; then
-    sed -i 's/192\.168\.6\.1/192.168.2.1/g; s/192\.168\.1\.1/192.168.2.1/g' "$CONFIG_FILE"
-    echo "IP 地址已更新为 192.168.2.1"
-  else
-    echo "IP 地址已是 192.168.2.1，无需修改"
+  sed -i 's/192\.168\.1\.1/192.168.2.1/g; s/192\.168\.6\.1/192.168.2.1/g' "$CONFIG_FILE"
+  echo "✅ 默认 IP 已更新为 192.168.2.1"
+fi
+
+# 2. 修改默认主题为 luci-theme-aurora
+if [ -f "feeds/luci/modules/luci-base/root/etc/config/luci" ]; then
+  sed -i 's/luci-theme-bootstrap/luci-theme-aurora/g' feeds/luci/modules/luci-base/root/etc/config/luci 2>/dev/null || true
+  sed -i 's/luci-theme-argon/luci-theme-aurora/g' feeds/luci/modules/luci-base/root/etc/config/luci 2>/dev/null || true
+  echo "✅ 默认主题已配置为 luci-theme-aurora"
+fi
+
+mkdir -p files/etc/uci-defaults
+cat << 'EOF' > files/etc/uci-defaults/99-default-theme
+uci set luci.main.mediaurlbase='/luci-static/aurora'
+uci commit luci
+exit 0
+EOF
+chmod +x files/etc/uci-defaults/99-default-theme
+
+# 3. 注入 MT7981 5G 25dB 高功率 EEPROM 射频校准表
+mkdir -p files/lib/firmware
+mkdir -p package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom 2>/dev/null || true
+
+EEPROM_SRC=""
+for cand in "files/lib/firmware/e2p" "files/MT7981_iPAiLNA_EEPROM.bin" "../files/lib/firmware/e2p" "../files/MT7981_iPAiLNA_EEPROM.bin"; do
+  if [ -f "$cand" ]; then
+    EEPROM_SRC="$cand"
+    break
   fi
-else
-  echo "警告：$CONFIG_FILE 不存在，跳过 IP 修改"
+done
+
+if [ -n "$EEPROM_SRC" ]; then
+  cp -f "$EEPROM_SRC" files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin
+  # 确保 0x445 偏移量写入 20 个 0x2B (25dB 高功率校准)
+  printf '\x2B%.0s' {1..20} | dd of="files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin" bs=1 seek=$((0x445)) conv=notrunc 2>/dev/null || true
+  cp -f files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin files/lib/firmware/e2p
+  # 同步到驱动内置目录（兼容 24.10 / 25.12）
+  if [ -d "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom" ]; then
+    cp -f files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
+    cp -f files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
+  fi
+  echo "✅ 成功注入 5G 25dB 高功率 EEPROM 至 files/lib/firmware/e2p"
 fi
 
-# 预装 OpenClash（已注释，保持不变）
-# echo "CONFIG_PACKAGE_luci-app-openclash=y" >> .config
-
-# 删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
-rm -f package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
-if [ $? -eq 0 ]; then
-  echo "已删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p"
-else
-  echo "错误：删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p 失败"
-fi
-
-# 创建 MT7981 固件符号链接
-EEPROM_FILE="package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin"
-if [ -f "$EEPROM_FILE" ]; then
-  mkdir -p files/lib/firmware
-  ln -sf /lib/firmware/MT7981_iPAiLNA_EEPROM.bin files/lib/firmware/e2p
-  echo "符号链接已创建"
-  ls -l files/lib/firmware/e2p || true
-else
-  echo "提示：$EEPROM_FILE 不存在，跳过符号链接创建"
-fi
+# 4. 解锁 MTK 无线 Profile 最大发射功率 TxPower=100
+for f in package/mtk/drivers/wifi-profile/files/mt7981/*.dat; do
+  if [ -f "$f" ]; then
+    sed -i 's/TxPower=[0-9]*/TxPower=100/g' "$f" 2>/dev/null || true
+  fi
+done
+echo "✅ 无线配置文件已设定最大功率 TxPower=100"

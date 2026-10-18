@@ -13,6 +13,11 @@ on:
           - xiaomi_mi-router-ax3000t
           - glinet_gl-mt3000
           - xiaomi_redmi-router-ax6000-stock
+      enable_5g_25db:
+        description: '修改5G 25dB高功率'
+        required: false
+        default: true
+        type: boolean
 
 env:
   REPO_URL: https://github.com/chasey-dev/immortalwrt-mt798x-rebase
@@ -23,6 +28,7 @@ env:
   DIY_P2_SH: scripts/diy-part2.sh
   TZ: Asia/Shanghai
   UPLOAD_FIRMWARE: 'true'
+  ENABLE_5G_25DB: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_5g_25db }}
 
 jobs:
   build:
@@ -52,6 +58,14 @@ jobs:
           git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+      - name: 同步外部自定义文件 (files)
+        run: |
+          if [ -d "$GITHUB_WORKSPACE/files" ]; then
+            mkdir -p openwrt/files
+            cp -rf "$GITHUB_WORKSPACE/files/"* openwrt/files/ 2>/dev/null || true
+            echo "✅ 已同步外部自定义文件至 openwrt/files"
+          fi
+
       - name: 缓存加速
         uses: actions/cache@v4
         with:
@@ -72,6 +86,28 @@ jobs:
           ./scripts/feeds update -a && ./scripts/feeds install -a
 
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH && $GITHUB_WORKSPACE/$DIY_P2_SH
+
+      - name: 修改5G 25dB & 注入高功率EEPROM
+        if: env.ENABLE_5G_25DB == 'true'
+        run: |
+          cd openwrt
+          mkdir -p files/lib/firmware
+          mkdir -p package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom 2>/dev/null || true
+
+          EEPROM_FILE="files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin"
+          if [ ! -f "$EEPROM_FILE" ] && [ -f "$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin" ]; then
+            cp -f "$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin" "$EEPROM_FILE"
+          fi
+
+          if [ -f "$EEPROM_FILE" ]; then
+            printf '\x2B%.0s' {1..20} | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) conv=notrunc 2>/dev/null || true
+            cp -f "$EEPROM_FILE" files/lib/firmware/e2p
+            if [ -d "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom" ]; then
+              cp -f "$EEPROM_FILE" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
+              cp -f "$EEPROM_FILE" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
+            fi
+            echo "✅ 成功注入 5G 25dB 高功率 EEPROM 至 /lib/firmware/e2p"
+          fi
 
       - name: 生成 .config & 下载软件包
         run: |
@@ -138,7 +174,8 @@ jobs:
             }
           done
           
-          rm -f *factory* *recovery* *-bl2* *sha256sums* 2>/dev/null || true
+          # 精简清理无关 eMMC 文件，仅保留 NAND 运行与引导文件
+          rm -f *emmc* *recovery* *-bl2* *sha256sums* 2>/dev/null || true
           sha256sum *sysupgrade* > sha256sums 2>/dev/null || true
           
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
@@ -176,8 +213,11 @@ jobs:
           files: ${{ env.FIRMWARE_PATH }}/*
           overwrite_files: true
           body: |
-            ## ImmortalWrt-25.12 固件编译
-            - **目标设备**: ${{ github.event.inputs.device_model }}
+            ## ImmortalWrt-25.12 固件发布 (精悍版)
+            - **目标设备**: ${{ github.event.inputs.device_model }} (NAND)
+            - **内置主题**: luci-theme-aurora
+            - **文件共享**: KSMBD (Linux 内核态极速 SMB)
+            - **无线驱动**: MTK 原生 mt_wifi + 5G 25dB 高功率 EEPROM
+            - **体积优化**: 1024K SquashFS 极致压缩，剥除内核冗余 Debug 符号
             - **编译时间**: ${{ env.DATE }}
-            - **上游分支**: ${{ env.REPO_BRANCH }}
             - **默认后台**: 192.168.2.1 / 无密码
