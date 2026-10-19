@@ -94,19 +94,30 @@ jobs:
           mkdir -p files/lib/firmware
           mkdir -p package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom 2>/dev/null || true
 
-          EEPROM_FILE="files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin"
-          if [ ! -f "$EEPROM_FILE" ] && [ -f "$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin" ]; then
-            cp -f "$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin" "$EEPROM_FILE"
-          fi
-
-          if [ -f "$EEPROM_FILE" ]; then
-            printf '\x2B%.0s' {1..20} | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) conv=notrunc 2>/dev/null || true
-            cp -f "$EEPROM_FILE" files/lib/firmware/e2p
-            if [ -d "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom" ]; then
-              cp -f "$EEPROM_FILE" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
-              cp -f "$EEPROM_FILE" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
+          # 寻找高功率 EEPROM 原始源 (优先外置高功率 ePAeLNA)
+          EEPROM_SRC=""
+          for cand in "$GITHUB_WORKSPACE/package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_ePAeLNA_EEPROM.bin" \
+                      "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_ePAeLNA_EEPROM.bin" \
+                      "$GITHUB_WORKSPACE/files/lib/firmware/MT7981_ePAeLNA_EEPROM.bin" \
+                      "$GITHUB_WORKSPACE/files/lib/firmware/e2p" \
+                      "$GITHUB_WORKSPACE/files/MT7981_iPAiLNA_EEPROM.bin"; do
+            if [ -f "$cand" ]; then
+              EEPROM_SRC="$cand"
+              break
             fi
-            echo "✅ 成功注入 5G 25dB 高功率 EEPROM 至 /lib/firmware/e2p"
+          done
+
+          if [ -n "$EEPROM_SRC" ]; then
+            echo "✅ 注入高功率 EEPROM 源: $EEPROM_SRC"
+            cp -f "$EEPROM_SRC" files/lib/firmware/MT7981_ePAeLNA_EEPROM.bin
+            cp -f "$EEPROM_SRC" files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin
+            cp -f "$EEPROM_SRC" files/lib/firmware/e2p
+            if [ -d "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom" ]; then
+              cp -f "$EEPROM_SRC" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_ePAeLNA_EEPROM.bin
+              cp -f "$EEPROM_SRC" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin
+              cp -f "$EEPROM_SRC" package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
+            fi
+            echo "✅ 成功全面注入高功率 EEPROM 至 files/lib/firmware/"
           fi
 
       - name: 生成 .config & 下载软件包
