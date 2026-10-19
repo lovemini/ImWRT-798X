@@ -14,7 +14,6 @@
   - **24.10 (Linux 6.6 内核)**：成熟稳定，源自 `padavanonly/immortalwrt-mt798x-24.10`。
   - **25.12**：前沿版本，源自 `chasey-dev/immortalwrt-mt798x-rebase`。
 - **独立解耦 Feeds**：`feeds-24.10.conf.default` 与 `feeds-25.12.conf.default` 分离，杜绝源污染。
-- **5G 25dB 射频增强**：支持启用高功率模式释放 Wi-Fi 潜能。
 - **MTK 原厂驱动 & 硬件加速**：包含 `kmod-mt_wifi` 与 `kmod-mediatek_hnat` 硬件 NAT 加速。
 - **自动化发布**：构建产物（`sysupgrade.bin`、`factory.bin` 与 `sha256sums`）自动发布至 **GitHub Releases**。
 - **默认网络参数**：
@@ -34,11 +33,9 @@
 ├── feeds-25.12.conf.default        # 25.12 专用软件源配置 (含 Aurora 主题)
 ├── 24.10-6.6.config                # 24.10 精简内核与插件配置
 ├── mt7981-ax3000.config            # 25.12 精简内核与插件配置
-├── files/
-│   └── MT7981_iPAiLNA_EEPROM.bin   # MT7981 EEPROM 射频校准文件
 └── scripts/
     ├── diy-part1.sh                # 更新 Feeds 前自定义脚本
-    └── diy-part2.sh                # 更新 Feeds 后自定义脚本 (IP、EEPROM链接等)
+    └── diy-part2.sh                # 更新 Feeds 后自定义脚本 (IP、主题等)
 ```
 
 ---
