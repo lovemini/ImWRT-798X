@@ -11,8 +11,8 @@
 
 - **专注主力机型**：默认适配 **中国移动 RAX3000M (NAND)**，开箱即用。
 - **双分支版本支持**：
-  - **24.10 (Linux 6.6 内核)**：成熟稳定，源自 `padavanonly/immortalwrt-mt798x-24.10`(https://github.com/padavanonly/immortalwrt-mt798x-24.10).
-  - **25.12**：前沿版本，源自 `chasey-dev/immortalwrt-mt798x-rebase`(https://github.com/chasey-dev/immortalwrt-mt798x-rebase).
+  - **24.10 (Linux 6.6 内核)**：成熟稳定，源自 [padavanonly/immortalwrt-mt798x-24.10](https://github.com/padavanonly/immortalwrt-mt798x-24.10).
+  - **25.12**：前沿版本，源自 [chasey-dev/immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase).
 - **独立解耦 Feeds**：`feeds-24.10.conf.default` 与 `feeds-25.12.conf.default` 分离，杜绝源污染。
 - **MTK 原厂驱动 & 硬件加速**：包含 `kmod-mt_wifi` 与 `kmod-mediatek_hnat` 硬件 NAT 加速。
 - **自动化发布**：构建产物（`sysupgrade.bin`、`factory.bin` 与 `sha256sums`）自动发布至 **GitHub Releases**。
