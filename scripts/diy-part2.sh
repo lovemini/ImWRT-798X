@@ -15,16 +15,6 @@ if [ -f "feeds/luci/modules/luci-base/root/etc/config/luci" ]; then
   echo "✅ 默认主题已配置为 luci-theme-aurora"
 fi
 
-# 3. 集成 dae-box 软件包
-if [ ! -d "package/dae-box" ]; then
-  git clone --depth=1 https://github.com/hhCodingCat/dae-box.git /tmp/dae-box-src 2>/dev/null || true
-  if [ -d "/tmp/dae-box-src/openwrt/dae-box" ]; then
-    cp -r /tmp/dae-box-src/openwrt/dae-box package/dae-box
-    rm -rf /tmp/dae-box-src
-    echo "✅ 成功集成 package/dae-box"
-  fi
-fi
-
 mkdir -p files/etc/uci-defaults
 cat << 'EOF' > files/etc/uci-defaults/99-default-theme
 uci set luci.main.mediaurlbase='/luci-static/aurora'
