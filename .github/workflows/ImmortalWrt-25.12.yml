@@ -102,14 +102,14 @@ jobs:
           echo "CONFIG_TARGET_mediatek_filogic_DEVICE_${DEVICE}=y" >> .config
           echo "CONFIG_CCACHE=y" >> .config
 
-          # 按需追加 eBPF 模块支持 (kmod-sched-bpf, kmod-veth, kmod-xdp-sockets-diag)
+          # 按需追加 eBPF 模块支持 (kmod-sched-bpf, kmod-veth, kmod-xdp-sockets-diag) 及 dae-box
           if [ "${{ env.ENABLE_EBPF_KMODS }}" = "true" ]; then
             echo "CONFIG_KERNEL_CGROUP_BPF=y" >> .config
             echo "CONFIG_KERNEL_XDP_SOCKETS=y" >> .config
             echo "CONFIG_PACKAGE_kmod-sched-bpf=y" >> .config
             echo "CONFIG_PACKAGE_kmod-veth=y" >> .config
             echo "CONFIG_PACKAGE_kmod-xdp-sockets-diag=y" >> .config
-            echo "✅ 已启用 eBPF 常用内核模块 (kmod-sched-bpf, kmod-veth, kmod-xdp-sockets-diag) 与内核 XDP/BPF 支持"
+            echo "CONFIG_PACKAGE_dae-box=y" >> .config
           fi
           
           make defconfig
@@ -206,7 +206,7 @@ jobs:
             - **内置主题**: luci-theme-aurora
             - **文件共享**: KSMBD (Linux 内核态极速 SMB)
             - **无线驱动**: MTK 原生闭源驱动 mt_wifi (官方默认)
-            - **eBPF 模块支持**: ${{ env.ENABLE_EBPF_KMODS == 'true' && '已集成 (kmod-sched-bpf, kmod-veth, kmod-xdp-sockets-diag)' || '未集成' }}
+            - **eBPF 模块与 dae-box**: ${{ env.ENABLE_EBPF_KMODS == 'true' && '已集成 (dae-box, kmod-sched-bpf, kmod-veth, kmod-xdp-sockets-diag)' || '未集成' }}
             - **体积优化**: 1024K SquashFS 极致压缩，剥除内核冗余 Debug 符号
             - **编译时间**: ${{ env.DATE }}
             - **默认后台**: 192.168.2.1 / 无密码
