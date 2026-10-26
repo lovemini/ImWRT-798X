@@ -1,11 +1,11 @@
 #!/bin/bash
 # diy-part2.sh
 
-# 1. 修改默认 IP 为 192.168.2.1
+# 1. 修改默认 IP 为 192.168.1.254
 CONFIG_FILE="package/base-files/files/bin/config_generate"
 if [ -f "$CONFIG_FILE" ]; then
-  sed -i 's/192\.168\.1\.1/192.168.2.1/g; s/192\.168\.6\.1/192.168.2.1/g' "$CONFIG_FILE"
-  echo "✅ 默认 IP 已更新为 192.168.2.1"
+  sed -i 's/192\.168\.1\.1/192.168.1.254/g; s/192\.168\.6\.1/192.168.1.254/g' "$CONFIG_FILE"
+  echo "✅ 默认 IP 已更新为 192.168.1.254"
 fi
 
 # 2. 修改默认主题为 luci-theme-aurora
