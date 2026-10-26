@@ -16,9 +16,9 @@ if [ -f "feeds/luci/modules/luci-base/root/etc/config/luci" ]; then
 fi
 
 # 2. 修改KSMBD的版本
-if [ -f "packages/net/ksmbd-tools/Makefile" ]; then
-  sed -i 's/PKG_VERSION:=3.5.6/PKG_VERSION:=3.5.7/g' packages/net/ksmbd-tools/Makefile 2>/dev/null || true
-  sed -i 's/PKG_HASH:=8ce27cf947667b634478186aa7ef91fce68461c781d3880693a4639f8fecc397/PKG_HASH:=d8e532b2d032e3f447f3fd19e0f9ea0abeb355285f8d6871ce9036bc6393a5b2/g' packages/net/ksmbd-tools/Makefile 2>/dev/null || true
+if [ -f "feeds/packages/net/ksmbd-tools/Makefile" ]; then
+  sed -i 's/PKG_VERSION:=3.5.6/PKG_VERSION:=3.5.7/g' feeds/packages/net/ksmbd-tools/Makefile 2>/dev/null || true
+  sed -i 's/PKG_HASH:=8ce27cf947667b634478186aa7ef91fce68461c781d3880693a4639f8fecc397/PKG_HASH:=d8e532b2d032e3f447f3fd19e0f9ea0abeb355285f8d6871ce9036bc6393a5b2/g' feeds/packages/net/ksmbd-tools/Makefile 2>/dev/null || true
   echo "✅ 修改KSMBD的版本3.5.7 "
 fi
 
